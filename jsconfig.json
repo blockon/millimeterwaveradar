@@ -1,0 +1,11 @@
+// vite.gonfig.js alias支持点击跳转配置，vscode支持路径提示
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@img/*": ["./src/assets/imgs/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}

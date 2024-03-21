@@ -1,0 +1,206 @@
+@import 'reset.scss';
+@import 'vantTheme.scss';
+
+/* CDN 服务仅供平台体验和调试使用，平台不承诺服务的稳定性，企业客户需下载字体包自行发布使用并做好备份。 */
+@font-face {
+  font-family: 'iconfont';
+  /* Project id 1976724 */
+  src: url('https://at.alicdn.com/t/font_1976724_4d5y4iru28m.eot?t=1649841222530');
+  /* IE9 */
+  src: url('https://at.alicdn.com/t/font_1976724_4d5y4iru28m.eot?t=1649841222530#iefix') format('embedded-opentype'),
+    /* IE6-IE8 */ url('https://at.alicdn.com/t/font_1976724_4d5y4iru28m.woff2?t=1649841222530') format('woff2'),
+    url('https://at.alicdn.com/t/font_1976724_4d5y4iru28m.woff?t=1649841222530') format('woff'),
+    url('https://at.alicdn.com/t/font_1976724_4d5y4iru28m.ttf?t=1649841222530') format('truetype'),
+    url('https://at.alicdn.com/t/font_1976724_4d5y4iru28m.svg?t=1649841222530#iconfont') format('svg');
+}
+
+.iconfont {
+  font-family: 'iconfont' !important;
+  font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-stroke-width: 0.2px;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.iconfont-c {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  fill: currentColor;
+  overflow: hidden;
+  font-size: 16px;
+  font-style: normal;
+}
+
+.click-scale {
+  transition: 0.3s;
+}
+
+.click-scale:active {
+  transform: scale(0.95);
+}
+
+.border-solid {
+  border-style: solid;
+}
+
+/* 上下浮动动画 */
+.animate-float {
+  animation: float 2s linear infinite;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(15px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+/* 动画 开始 */
+/* 从右移入移出 */
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.5s ease-out;
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateX(50px);
+  opacity: 0;
+}
+
+/* 放大，然后缩小一点 */
+.bounce-enter-active {
+  animation: bounce-in 0.5s;
+}
+
+.bounce-leave-active {
+  animation: bounce-in 0.5s reverse;
+}
+
+@keyframes bounce-in {
+  0% {
+    transform: scale(0);
+  }
+
+  50% {
+    transform: scale(1.25);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 放大进入 */
+.enlarge-enter-active {
+  animation: enlarge 0.5s;
+}
+
+.enlarge-leave-active {
+  animation: enlarge 0.5s reverse;
+}
+
+@keyframes enlarge {
+  0% {
+    transform: scale(0);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 向上放大进入 */
+.up-opacity-enter-active {
+  animation: up-opacity 0.5s;
+  transform-origin: center;
+}
+
+.up-opacity-leave-active {
+  animation: up-opacity 0.5s reverse;
+}
+
+@keyframes up-opacity {
+  0% {
+    opacity: 0;
+    transform: translateY(100px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+}
+
+/* 向下放大进入 */
+.down-opacity-enter-active {
+  animation: down-opacity 0.5s;
+}
+
+.down-opacity-leave-active {
+  animation: down-opacity 0.5s reverse;
+}
+
+@keyframes down-opacity {
+  0% {
+    transform: scale(0) translateY(-100px);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1) translateY(0px);
+    opacity: 1;
+  }
+}
+
+.animate-spin-reverse {
+  animation: spin-reverse 1s linear infinite;
+}
+
+@keyframes spin-reverse {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+/* 动画 结束 */
+
+.van-switch {
+  .switch__node {
+    font-size: 14px;
+    box-shadow: none;
+    left: 1px;
+    top: 1px;
+  }
+}
+
+.start-btn {
+  margin: 19px auto 7px !important;
+  border-radius: 24px !important;
+  display: block !important;
+}
+.van-button--primary {
+  border-radius: 24px !important;
+}
+
+.van-dialog__footer{
+  .van-button{
+    font-weight: normal !important;
+  }
+  .van-dialog__cancel{
+    background: #fff !important;
+  }
+}

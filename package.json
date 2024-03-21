@@ -1,0 +1,53 @@
+{
+  "name": "common_frame_vue3",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --mode dev",
+    "test": "vite --mode test",
+    "pro": "vite --mode pro",
+    "build": "vite build --mode pro",
+    "build:test": "vite build --mode test",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@better-scroll/core": "^2.5.0",
+    "@better-scroll/observe-dom": "^2.5.0",
+    "@better-scroll/observe-image": "^2.5.0",
+    "@better-scroll/pull-down": "^2.5.0",
+    "@better-scroll/pull-up": "^2.5.0",
+    "@vitejs/plugin-legacy": "^2.3.1",
+    "@vueuse/core": "^9.6.0",
+    "@vueuse/router": "^9.6.0",
+    "axios": "^0.27.2",
+    "echarts": "^5.4.0",
+    "esbuild-windows-64": "^0.15.11",
+    "mitt": "^3.0.0",
+    "moment": "^2.29.4",
+    "pinia": "^2.0.22",
+    "pinia-plugin-persistedstate": "^2.2.0",
+    "svgaplayerweb": "^2.3.2",
+    "vant": "^4.0.1",
+    "vconsole": "^3.14.7",
+    "vite-plugin-html": "^3.2.0",
+    "vue": "^3.2.37",
+    "vue-router": "^4.0.13",
+    "websocket": "^1.0.34"
+  },
+  "devDependencies": {
+    "@rollup/plugin-inject": "^5.0.2",
+    "@vitejs/plugin-vue": "^3.1.0",
+    "postcss-px-to-viewport": "^1.1.1",
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-copy": "^3.4.0",
+    "rollup-plugin-external-globals": "^0.6.1",
+    "sass": "^1.55.0",
+    "sass-loader": "^13.1.0",
+    "terser": "^5.15.1",
+    "unplugin-auto-import": "^0.11.4",
+    "unplugin-vue-components": "^0.22.7",
+    "vite": "^3.2.5",
+    "vite-plugin-resolve-externals": "^0.2.2"
+  }
+}

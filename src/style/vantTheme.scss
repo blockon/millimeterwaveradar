@@ -1,0 +1,102 @@
+:root {
+  --van-text-color: #333333 !important;
+  --van-switch-background-color: #e6e6e6 !important;
+  /* --van-switch-node-size: 14px !important; */
+  --van-button-primary-background-color: linear-gradient(270deg, #56b2f7 0%, #2b7bed 98%) !important;
+  --van-button-primary-border-color: linear-gradient(270deg, #56b2f7 0%, #2b7bed 98%) !important;
+  /* --van-border-width-base: 0 !important; */
+  --van-button-primary-border-color: linear-gradient(270deg, #56b2f7 0%, #2b7bed 98%);
+  /* --van-button-default-color: #fff !important; */
+  --van-button-default-border-color: #d4d4d4 !important;
+  --van-button-default-background-color: #fff !important;
+
+  --van-tabs-nav-background: transparent !important;
+  --van-tabs-bottom-bar-color: rgba(43, 124, 237, 0.3) !important;
+  --van-tabs-bottom-bar-height: 5px !important;
+  --van-tabs-bottom-bar-width: 60px !important;
+
+  --van-tab-font-size: 16px !important;
+
+  --van-nav-bar-background-color: transparent !important;
+  --van-nav-bar-arrow-size: 20px !important;
+  --van-nav-bar-icon-color: #000 !important;
+  --van-nav-bar-title-font-size: 18px !important;
+
+  --van-cell-vertical-padding: 16px !important;
+
+  --van-popup-round-radius: 30px !important;
+  --van-popup-background: #f9f9f9 !important;
+
+  --van-picker-background: rgb(249, 249, 249) !important;
+  --van-picker-mask-color: linear-gradient(180deg, rgba(249, 249, 249, 0.9), rgba(249, 249, 249, 0.4)),
+    linear-gradient(0deg, rgba(249, 249, 249, 0.9), rgba(249, 249, 249, 0.4)) !important;
+
+  --van-dialog-background: #fff !important;
+  --van-dialog-message-font-size: 16px;
+}
+
+.van-tabs__line {
+  margin-bottom: 12px;
+  border-radius: 0 !important;
+}
+
+/* picker */
+.van-picker__mask {
+  z-index: 3 !important;
+}
+
+.van-picker-column {
+  position: relative;
+  z-index: 2;
+}
+
+.van-picker__frame {
+  background-color: #fff;
+  border-radius: 14px;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 1 !important;
+}
+
+.van-picker__frame::after {
+  border: none !important;
+}
+
+/* toast */
+.van-toast {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+.van-toast--bottom {
+  top: auto !important;
+}
+
+/*  确认弹窗 */
+.van-dialog {
+  width: 311px !important;
+  background: #f9f9f9 !important;
+  border-radius: 14px;
+
+  .van-dialog__footer {
+    background: #f9f9f9 !important;
+    padding-bottom: 32px;
+
+    >.van-button--warning {
+      background-color: #f9f9f9;
+      height: 40px;
+      border: 1px solid rgba(212, 212, 212, 1);
+      border-radius: 24px;
+      color: #333333;
+    }
+
+    >.van-button--danger {
+      background-color: #fff;
+      border: none;
+      height: 40px;
+      background-image: linear-gradient(270deg, #56b2f7 0%, #2b7bed 98%);
+      box-shadow: 0px 6px 12px 0px rgba(5, 54, 122, 0.1);
+      border-radius: 24px;
+      margin-left: 15px;
+    }
+  }
+}

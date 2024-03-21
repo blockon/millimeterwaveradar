@@ -1,0 +1,45 @@
+<!--
+ * @Author: chuan.wang chuan.wang@changhong.com
+ * @Date: 2022-12-20 10:42:19
+ * @LastEditors: chuan.wang chuan.wang@changhong.com
+ * @LastEditTime: 2024-01-25 09:13:14
+ * @FilePath: \MeilingSmartHome-NewOperationd:\虹美公司\project\2023\MillimeterWaveRadar\index.html
+ * @Description: 
+ * 
+ * Copyright (c) 2023 by ${git_name_email}, All Rights Reserved. 
+-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- <link rel="stylesheet" href="https://apppic.mymlsoft.com/app_static/vant.min.4.0.3.css" /> -->
+    <!-- <script src="./lib/index.js"></script> -->
+    <!-- cordova和iframe里的嵌套项目不兼容 -->
+    <title><%- title %></title>
+  </head>
+
+  <body>
+    <div id="app" class="flex-col bg-f9f9f9"></div>
+  </body>
+  <script>
+    // 这段代码是解决在低版本手机中，无法执行type module 里面的兼容代码，单某些低版本手机可以执行type model方法，但是es6代码解析不了，坑
+    ;(function (win) {
+      let scripts = document.getElementsByTagName('script')
+      for (let i = 0; i < scripts.length; i++) {
+        let script = scripts[i]
+        let url = script.getAttribute('src')
+        let type = script.getAttribute('type')
+        let scriptText = script.innerHTML
+        if ((url && !url.includes('cordova')) || type === 'module') {
+          let tag = document.createElement('script')
+          url && tag.setAttribute('url', url)
+          tag.innerHTML = scriptText
+          script.remove()
+          document.getElementsByTagName('head')[0].appendChild(tag)
+        }
+      }
+    })(window)
+  </script>
+</html>

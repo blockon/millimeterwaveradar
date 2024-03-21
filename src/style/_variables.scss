@@ -1,0 +1,80 @@
+$blue:#28b9f5;
+$red:#ff5353;
+$normal:#00c692;
+$gray:#999999;
+
+// 垂直居中
+@mixin flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+// 两侧对齐
+@mixin flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+// 弹窗居中
+@mixin position-center($color:#fff) {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    background: $color;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    border-radius: 5px;
+}
+
+// 超出隐藏
+@mixin text-overflow($line:1) {
+    white-space: normal;
+    -webkit-line-clamp: $line;
+    -webkit-box-orient: vertical;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    display: -webkit-box;
+    word-break: break-all;
+}
+
+// left 1px
+@mixin border-1px-left ($color) {
+    position: relative;
+    &:after {
+        content: '';
+        position: absolute;
+        border-left: 1px solid $color;
+        transform: scaleX(.5);
+        left: 0;
+        top: 0;
+        bottom: 0;
+    }
+}
+// bottom 1px
+@mixin border-1px-bottom ($color) {
+    position: relative;
+    &:after {
+        content: '';
+        position: absolute;
+        border-bottom: 1px solid $color;
+        transform: scaleY(.5);
+        left: 0;
+        right: 0;
+        bottom: 0;
+    }
+}
+// top 1px
+@mixin border-1px-top ($color) {
+    position: relative;
+    &:after {
+        content: '';
+        position: absolute;
+        border-top: 1px solid $color;
+        transform: scaleY(.5);
+        left: 0;
+        right: 0;
+        top: 0;
+    }
+}
