@@ -2,7 +2,7 @@
  * @Author: chuan.wang chuan.wang@changhong.com
  * @Date: 2022-12-20 10:42:19
  * @LastEditors: chuan.wang chuan.wang@changhong.com
- * @LastEditTime: 2024-03-20 10:18:58
+ * @LastEditTime: 2024-03-21 17:32:43
  * @FilePath: \MeilingSmartHome-NewOperationd:\虹美公司\project\2023\MillimeterWaveRadar\src\page\home\index.vue
  * @Description: 
  * 
@@ -184,15 +184,15 @@ let devData = ref({
   "low_swing_area": 1, //下摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
 });
 const getAreaClass = item => {
-  if (item.angel >= 50 && item.angel <= 77 && item.distance >= 0 && item.distance <= 250) {
+  if (item.angel >= 50 && item.angel <= 76 && item.distance >= 0 && item.distance <= 250) {
     return '1'
-  } else if (item.angel > 77 && item.angel <= 103 && item.distance >= 0 && item.distance <= 250) {
+  } else if (item.angel > 76 && item.angel <= 102 && item.distance >= 0 && item.distance <= 250) {
     return '2'
-  } else if (item.angel > 103 && item.angel < 130 && item.distance >= 0 && item.distance <= 250) {
+  } else if (item.angel > 102 && item.angel < 130 && item.distance >= 0 && item.distance <= 250) {
     return '3'
-  } else if (item.angel >= 50 && item.angel <= 77 && item.distance >= 250 && item.distance <= 400) {
+  } else if (item.angel >= 50 && item.angel <= 76 && item.distance >= 250 && item.distance <= 400) {
     return '4'
-  } else if (item.angel > 77 && item.angel <= 103 && item.distance >= 250 && item.distance <= 400) {
+  } else if (item.angel > 76 && item.angel <= 102 && item.distance >= 250 && item.distance <= 400) {
     return '5'
   } else {
     return '6'
