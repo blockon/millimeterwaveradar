@@ -16,21 +16,31 @@
       <div class="wind_speed_num">
         <img class="running_anticlockwise" :style="`animation-duration:${Math.abs(5 - devData.speed)}s`"
           src="@img/ic_wind_speed.png" />
-        <div class="wind_speed_str">{{ devData.sleep_mode == 1 ? '睡眠' : windSpeedArr[devData.speed] }}</div>
-        <div class="wind_speed_hint">风速</div>
+        <div class="wind_speed_str">{{ devData.sleep_mode == 1 ? '开机' : '关机' }}</div>
+        <div class="wind_speed_hint">25.5℃ | 中风</div>
       </div>
 
       <!-- 摆风区域 -->
       <div class="wind_area">
-        <img class="img_pro" src="@img/ic_pro.png" />
+        <img class="img_pro" src="@img/ic_openDev.png" />
+        <img src="@img/fengSuiRenDong.png" class="windArea" />
 
+<!--        <img src="@img/ic_grid.png" class="grid_wind_area" />-->
+        <div class="windModeText">风逆身动</div>
+        <img src="@img/windModeBg.png" class="windModeBgImg"/>
         <!-- 网格区域 -->
         <div class="grid_area">
-          <div v-for="item in devData.data_array" :class="['grid-item', `${'grid-item' + getAreaClass(item)}`]"
-            :key="item.id">
+          <div class="people_grid_area">
+            <img src="../../assets/imgs/flag1.png" class="flagBgArea">
+            <div class="peopleFlag">2.3m</div>
+            <img src="@img/people.png" class="peopleImg"/>
           </div>
+<!--          <div v-for="item in devData.data_array" :class="['grid-item', `${'grid-item' + getAreaClass(item)}`]"-->
+<!--            :key="item.id">-->
+<!--          </div>-->
 
         </div>
+
       </div>
 
       <!-- 扫风动画 -->
@@ -40,10 +50,10 @@
       </div>
 
       <!-- 摆风模式 -->
-      <div class="wind_mode_area">
-        <div class="wind_mode_str">「 {{ WindlessFeeling ? '无风感' : '普通' }} 」</div>
-        <div class="wind_mode_hint">模式</div>
-      </div>
+<!--      <div class="wind_mode_area">-->
+<!--        <div class="wind_mode_str">「 {{ WindlessFeeling ? '无风感' : '普通' }} 」</div>-->
+<!--        <div class="wind_mode_hint">模式</div>-->
+<!--      </div>-->
 
     </div>
 
@@ -53,11 +63,12 @@
 
       <!-- 热源数量 -->
       <div class="heat_num_area">
-        <img class="running_clockwise" src="@img/ic_heat_num.png" />
+        <img class="running_clockwise" :src="peopleBg" />
+        <img class="singleScan" :class="{'noScan':devData.data_array.length === 0}" :src="peopleScan" />
         <div class="heat_num_str">{{ devData.data_array.length !== 0 ? devData.data_array.length == 1 ? '单人' : '多人' :
           '无人'
           }}</div>
-        <div class="heat_num_hint">人员数量</div>
+        <div class="heat_num_hint">当前2人，温度降低1度</div>
       </div>
 
       <!-- 未检测到人体 -->
@@ -65,15 +76,15 @@
       <!-- 检测到人体 -->
       <div class="heat_list" v-else>
         <div class="heat_item mid" v-for="(item, index) in devData.data_array" :key="index">
-          <div style="margin-left: 48px;">0{{ item.id + 1 }}</div>
-          <img src="@img/ic_map.png" />
-          <div style="margin-left: 140px;">{{ item.angel }}°</div>
+          <div class="itemLeft">0{{ item.id + 1 }}</div>
+          <img src="@img/ic_map.png" class="itemMap" />
+          <div class="itemAngel">{{ item.angel }}°</div>
           <div class="item_line"></div>
-          <div style="margin-left: 50px;">{{ item.distance / 100 }}米</div>
+          <div style="margin-left: 50px;" class="itemDistance">{{ item.distance / 100 }}m</div>
         </div>
       </div>
 
-      <div class="tips">温馨提示：本地热源最多检测3个</div>
+      <div class="tips">温馨提示：本地热源最多检测6个</div>
     </div>
   </div>
 </template>
@@ -86,6 +97,9 @@ let player = {};
 let parser = {};
 let isLoadFile = {};
 let range = {}
+const getImageUrl =(fullName)=> {
+  return new URL(`../../assets/imgs/${fullName}`, import.meta.url).href;
+}
 const excutePlayer = (playObj, item) => {
   // 执行动画
   if (devData.value.swing_mode != 0) {
@@ -99,6 +113,7 @@ const excutePlayer = (playObj, item) => {
     playObj.startAnimationWithRange(range[item.swing_leaf], isReverse[item.swing_leaf])
   }
 };
+
 const playSvga = () => {
 
   sgvaObj.forEach(item => {
@@ -160,21 +175,36 @@ let devData = ref({
   "json_seq": 2,  //数据包编号，0~65535
   "id_num": 2,  //检测到的人数，0-3人
   "data_array": [
-    // {
-    //   "id": 0,
-    //   "angel": 82,   //角度，50-130°
-    //   "distance": 300,   //距离，单位厘米，0-500cm
-    // },
+    {
+      "id": 0,
+      "angel": 82,   //角度，50-130°
+      "distance": 300,   //距离，单位厘米，0-500cm
+    },
     {
       "id": 1,
       "angel": 120,   //角度，50-130°
       "distance": 100,   //距离，单位厘米，0-500cm
     },
-    // {
-    //   "id": 2,
-    //   "angel": 80,   //角度，50-130°
-    //   "distance": 200,   //距离，单位厘米，0-500cm
-    // },
+    {
+      "id": 2,
+      "angel": 80,   //角度，50-130°
+      "distance": 200,   //距离，单位厘米，0-500cm
+    },
+    {
+      "id": 2,
+      "angel": 80,   //角度，50-130°
+      "distance": 200,   //距离，单位厘米，0-500cm
+    },
+    {
+      "id": 2,
+      "angel": 80,   //角度，50-130°
+      "distance": 200,   //距离，单位厘米，0-500cm
+    },
+    {
+      "id": 2,
+      "angel": 80,   //角度，50-130°
+      "distance": 200,   //距离，单位厘米，0-500cm
+    },
   ],
   "speed": 1,   //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
   // 扫风时绘制动画 风随人动和风逆人动动画停止，只绘制角度
@@ -183,6 +213,14 @@ let devData = ref({
   "up_swing_area": 1, //上摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
   "low_swing_area": 1, //下摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
 });
+const peopleBg = computed(()=>{
+  return devData.value.data_array.length === 0 ? getImageUrl('noPeople.png') : devData.value.data_array.length > 1 ?
+      getImageUrl('morePeople.png') : getImageUrl('ic_singlePeople.png')
+})
+const peopleScan = computed(()=>{
+  return devData.value.data_array.length === 0 ? getImageUrl('noPeopleScan.png') : devData.value.data_array.length > 1 ?
+      getImageUrl('morePeopleScan.png') : getImageUrl('singleScan.png')
+})
 const getAreaClass = item => {
   if (item.angel >= 50 && item.angel <= 76 && item.distance >= 0 && item.distance <= 250) {
     return '1'
@@ -212,9 +250,9 @@ const clearPlay = () => {
 const timer = ref(null)
 onMounted(() => {
   // startPlay();
-  timer.value = setInterval(() => {
-    getData();
-  }, 500);
+  // timer.value = setInterval(() => {
+  //   getData();
+  // }, 500);
 })
 onUnmounted(() => {
   clearInterval(timer.value);
@@ -255,7 +293,7 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
   width: 3840Px;
   height: 2160Px;
   background-image: url('@img/ic_home_bg.png');
-  background-size: auto;
+  background-size: 100% 100%;
   background-repeat: no-repeat;
 }
 
@@ -274,7 +312,7 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
     position: fixed;
     width: 520px;
     height: 520px;
-    top: 9.4%;
+    top: 6.4%;
     left: 4.2%;
 
     /* 转圈动画*/
@@ -313,43 +351,120 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
 
     .wind_speed_str {
       margin-top: 150px;
+      height: 134px;
+      line-height: 134px;
       font-family: YouSheBiaoTiHei;
-      font-size: 144px;
-      color: #01E7FF;
-      font-weight: 400;
+      font-size: 96px;
+      color: #C2F9FF;
+      font-weight: 600;
       text-align: center;
     }
 
     .wind_speed_hint {
       margin-top: 30px;
       font-family: YouSheBiaoTiHei;
-      font-size: 60px;
-      color: #01E7FF;
-      font-weight: 400;
+      font-size: 48px;
+      color: #C2F9FF;
+      font-weight: 600;
       text-align: center;
+      opacity: 0.8;
     }
   }
 
   .wind_area {
     width: 2037px;
-    margin-top: 6.7%;
+    margin-top: 23.7%;
     text-align: center;
     position: relative;
     z-index: 100;
 
     .img_pro {
-      height: 720px;
+      height: 636px;
+      z-index: 100;
+      position: absolute;
+      transform: translateX(-50%);
+      left: 50%;
     }
-
+    .windArea{
+      height: 990px;
+      position: absolute;
+      transform: translateX(-50%);
+      left: 50%;
+      z-index: 101;
+      top: 3.5%;
+    }
+    .grid_wind_area{
+      height: 430px;
+      position: absolute;
+      transform: translateX(-50%);
+      left: 50%;
+      margin-left: 16px;
+      top: 37.5%;
+    }
+    .windModeText{
+      position: absolute;
+      transform: translateX(-50%);
+      left: 50%;
+      font-size: 72px;
+      font-weight: 600;
+      color: #01FFFF;
+      z-index: 102;
+      top: 78%;
+    }
+    .windModeBgImg{
+      width: 966px;
+      position: absolute;
+      transform: translateX(-50%);
+      left: 50%;
+      top: 83%;
+    }
     .grid_area {
-      position: relative;
-      margin-top: -50px;
-      margin-left: 22px;
-      height: 646px;
+      position: absolute;
+      height: 430px;
+      width: 2024px;
       background-image: url('@img/ic_grid.png');
-      background-size: auto;
+      background-size: 100% auto;
       background-repeat: no-repeat;
-
+      margin-left: 16px;
+      top: 38.5%;
+      transform: translateX(-50%);
+      left: 50%;
+      z-index: 200;
+      .people_grid_area{
+        position: absolute;
+        top: 30px;
+        height: 318px;
+        width: 122px;
+        left: 50%;
+        .flagBgArea{
+          position: absolute;
+          width: 116px;
+          height: 64px;
+          transform: translateX(-50%);
+          left: 50%;
+        }
+        .peopleFlag{
+          position: absolute;
+          width: 116px;
+          height: 64px;
+          text-align: center;
+          line-height: 60px;
+          font-size: 40px;
+          font-weight: 600;
+          color: #090808;
+          z-index: 220;
+          transform: translateX(-50%);
+          left: 50%;
+        }
+        .peopleImg{
+          position: absolute;
+          height: 240px;
+          margin-top: 20px;
+          transform: translateX(-50%);
+          left: 50%;
+          top: 58px;
+        }
+      }
       .grid-item {
         position: absolute;
         left: 0;
@@ -432,34 +547,35 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
   .img_title {
     position: fixed;
     width: 1026px;
-    top: 8.5%;
+    top: 6.5%;
   }
 
   .heat_num_area {
     position: fixed;
-    width: 626px;
-    top: 21%;
+    width: 924px;
+    height: 672px;
+    top: 15%;
 
     /* 转圈动画*/
     @keyframes rotate_clockwise {
       0% {
-        -webkit-transform: rotate(0deg);
+        -webkit-transform: translate(-50%, -50%) rotate(0deg);
       }
 
       25% {
-        -webkit-transform: rotate(90deg);
+        -webkit-transform: translate(-50%, -50%) rotate(90deg);
       }
 
       50% {
-        -webkit-transform: rotate(180deg);
+        -webkit-transform: translate(-50%, -50%) rotate(180deg);
       }
 
       75% {
-        -webkit-transform: rotate(270deg);
+        -webkit-transform: translate(-50%, -50%) rotate(270deg);
       }
 
       100% {
-        -webkit-transform: rotate(360deg);
+        -webkit-transform: translate(-50%, -50%) rotate(360deg);
       }
     }
 
@@ -470,24 +586,38 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       infinite :规定动画应该无限次播放
       */
     .running_clockwise {
+      width: 924px;
+      height: 672px;
       position: fixed;
+      //animation: rotate_clockwise 3s linear infinite;
+    }
+    .singleScan{
+      width: 330px;
+      height: 330px;
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      top: 50%;
       animation: rotate_clockwise 3s linear infinite;
+    }
+    .noScan{
+      animation: none;
     }
 
     .heat_num_str {
-      margin-top: 160px;
+      margin-top: 280px;
       text-align: center;
       font-family: YouSheBiaoTiHei;
-      font-size: 176px;
+      font-size: 92px;
       color: #01E7FF;
       font-weight: 400;
     }
 
     .heat_num_hint {
-      margin-top: 60px;
+      margin-top: 30px;
       text-align: center;
       font-family: YouSheBiaoTiHei;
-      font-size: 62.2px;
+      font-size: 28px;
       color: #01E7FF;
       font-weight: 400;
     }
@@ -505,32 +635,46 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
 
   .heat_list {
     position: fixed;
-    top: 56%;
+    top: 47%;
 
     .heat_item {
-      width: 1040px;
+      width: 900px;
       height: 128px;
-      margin-bottom: 72px;
-      background: rgba(23, 253, 249, 0.05);
-      border-radius: 10px;
-
-      border: 1.89px solid rgba(23, 253, 249, 1);
+      margin-bottom: 32px;
+      border-radius: 16px;
+      border: 3px solid rgba(24, 254, 249, 0.4);
       font-family: PingFang-SC-Heavy;
-      font-size: 56px;
-      color: #17FDF9;
+      color: #C2F9FF;
       text-align: center;
-      font-weight: 400;
-
+      .itemLeft{
+        width: 100px;
+        margin-left: 48px;
+        font-size: 72px;
+        font-weight: 600;
+      }
+      .itemAngel{
+        width: 150px;
+        text-align: left;
+        margin-left: 52px;
+        font-size: 60px;
+        font-weight: 500;
+      }
+      .itemDistance{
+        margin-left: 40px;
+        font-size: 60px;
+        font-weight: 500;
+      }
       img {
         width: 38px;
-        margin-left: 370px;
+        margin-left: 256px;
       }
 
       .item_line {
-        margin-left: 66px;
+        margin-left: 40px;
         width: 2px;
         height: 48px;
         background: #17F4F2;
+        opacity: 0.4;
       }
 
     }
@@ -538,11 +682,11 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
 
   .tips {
     position: fixed;
-    bottom: 5.9%;
+    bottom: 3.9%;
     font-family: PingFangSC-Light;
     font-size: 48px;
-    color: #17FDF9;
-    font-weight: 200;
+    color: #C2F9FF;
+    font-weight: 300;
   }
 }
 </style>
