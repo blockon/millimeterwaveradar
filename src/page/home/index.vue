@@ -14,11 +14,11 @@
     <div class="page_left center">
       <!-- 风速 -->
       <div class="wind_speed_num">
-        <img class="running_anticlockwise" :style="`animation-duration:${Math.abs(5 - devData.speed)}s`"
-          :src="powerState" :class="{'noScan':devData.power == 0}" />
+<!--        :style="`animation-duration:${Math.abs(6 - devData.speed)}s`"-->
+        <img class="running_anticlockwise" :style="`animation-duration:${Math.abs(6 - devData.speed)}s`" :src="powerState" :class="{'noScan':devData.power == 0}" />
         <div class="powertext center">
           <div class="wind_speed_str">{{ devData.power ? '开机' : '关机' }}</div>
-          <div class="wind_speed_hint" v-if="devData.power">25.5℃ | 中风</div>
+          <div class="wind_speed_hint" v-if="devData.power">{{devData.set_temper/10}}℃ | {{speedMode}}</div>
         </div>
       </div>
 
@@ -26,22 +26,24 @@
       <div class="wind_area">
         <img class="img_pro" :src="devImg" />
         <div v-if="devData.power">
-          <img src="@img/fengNiShenDong.png" class="windArea" />
-          <div class="windModeText">风逆身动</div>
+          <img :src="windModeImg" class="windArea" />
+          <div class="windModeText">{{windMode}}</div>
           <img src="@img/windModeBg.png" class="windModeBgImg"/>
         </div>
         <!-- 网格区域 -->
         <div class="grid_area">
           <img :src="gridImgSrc" class="gridImg"/>
-          <div class="people_grid_area" v-if="devData.power">
-            <img src="../../assets/imgs/flag1.png" class="flagBgArea">
-            <div class="peopleFlag">2.3m</div>
-            <img src="@img/people.png" class="peopleImg"/>
-          </div>
 <!--          <div v-for="item in devData.data_array" :class="['grid-item', `${'grid-item' + getAreaClass(item)}`]"-->
 <!--            :key="item.id">-->
 <!--          </div>-->
-
+        </div>
+        <div class="grid_areaPeople">
+          <div class="people_grid_area" v-if="devData.power" v-for="item in devData.data_array"
+               :key="item.id" :style="`left:${getPeopleLeft(item)};top:${getPeopleTop(item)}`">
+            <img :src="getheadImg(item)" class="flagBgArea">
+            <div class="peopleFlag">{{item.distance/100}}m</div>
+            <img src="@img/people.png" class="peopleImg"/>
+          </div>
         </div>
       </div>
 
@@ -67,9 +69,9 @@
         <img class="singleScan" :class="{'noScan':!devData.power}" :src="peopleScan" />
         <div class="heat_num_str" :class="{'powerOffState':!devData.power}">
           {{ devData.data_array.length > 0 ? devData.data_array.length == 1 ? '单人' : '多人' : '无人' }}</div>
-        <div class="heat_num_hint" v-if="devData.data_array.length > 0">当前{{devData.data_array.length}}人，温度降低1度</div>
+        <div class="heat_num_hint" v-if="devData.power && devData.data_array.length > 0">
+          当前{{devData.id_num}}人，温度降低1度</div>
       </div>
-
       <!-- 未检测到人体 -->
       <div v-if="devData.data_array.length == 0 || !devData.power" class="no_body">区域内暂未检测到人体</div>
       <!-- 检测到人体 -->
@@ -172,47 +174,96 @@ let sgvaObj = [
 ];
 let devData = ref({
   "json_seq": 2,  //数据包编号，0~65535
-  "id_num": 2,  //检测到的人数，0-3人
+  "id_num": 5,  //检测到的人数，0-3人
   "data_array": [
     {
       "id": 0,
-      "angel": 82,   //角度，50-130°
-      "distance": 300,   //距离，单位厘米，0-500cm
+      "angel": 50,   //角度，50-130°
+      "distance": 180,   //距离，单位厘米，0-500cm
     },
     {
       "id": 1,
-      "angel": 120,   //角度，50-130°
-      "distance": 100,   //距离，单位厘米，0-500cm
+      "angel": 50,   //角度，50-130°
+      "distance": 320,   //距离，单位厘米，0-500cm
     },
     {
       "id": 2,
-      "angel": 80,   //角度，50-130°
+      "angel": 100,   //角度，50-130°
       "distance": 200,   //距离，单位厘米，0-500cm
     },
-    // {
-    //   "id": 3,
-    //   "angel": 80,   //角度，50-130°
-    //   "distance": 200,   //距离，单位厘米，0-500cm
-    // },
-    // {
-    //   "id": 4,
-    //   "angel": 80,   //角度，50-130°
-    //   "distance": 200,   //距离，单位厘米，0-500cm
-    // },
-    // {
-    //   "id": 5,
-    //   "angel": 80,   //角度，50-130°
-    //   "distance": 200,   //距离，单位厘米，0-500cm
-    // },
+    {
+      "id": 3,
+      "angel": 110,   //角度，50-130°
+      "distance": 260,   //距离，单位厘米，0-500cm
+    },
+    {
+      "id": 4,
+      "angel": 130,   //角度，50-130°
+      "distance": 200,   //距离，单位厘米，0-500cm
+    },
+    {
+      "id": 5,
+      "angel": 130,   //角度，50-130°
+      "distance": 350,   //距离，单位厘米，0-500cm
+    },
   ],
-  "speed": 1,   //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
+  "speed": 3,   //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
   // 扫风时绘制动画 风随人动和风逆人动动画停止，只绘制角度
-  "swing_mode": 0, //扫风方式，0：扫风，1：风随人动，2：风逆人动
+  "swing_mode": 2, //扫风方式，1：风随身动，2：风逆身动，3:人近风柔
   "sleep_mode": 1, //睡眠模式，0：关闭，1：打开
   "up_swing_area": 1, //上摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
   "low_swing_area": 1, //下摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
   "power": 1,
+  "set_temper":263
 });
+const speedMode = computed(()=>{
+  let speed = ""
+  switch (devData.value.speed) {
+    case 0:
+      speed = "自动风"
+      break
+    case 1:
+      speed = "微风"
+      break
+    case 2:
+      speed = "低风"
+      break
+    case 3:
+      speed = "中风"
+      break
+    case 4:
+      speed = "高风"
+      break
+    case 5:
+      speed = "强劲风"
+      break
+  }
+  return speed
+})
+const windModeImg = computed(()=>{
+  switch (devData.value.swing_mode) {
+    case 1:
+    case 2:
+      return getImageUrl('fengNiShenDong.png')
+    case 3:
+      return getImageUrl('fengJinRou.png')
+  }
+})
+const windMode = computed(()=>{
+  let mode = ""
+  switch (devData.value.swing_mode) {
+    case 1:
+      mode = "风随身动"
+      break
+    case 2:
+      mode = "风逆身动"
+      break
+    case 3:
+      mode = "人近风柔"
+      break
+  }
+  return mode
+})
 const peopleBg = computed(()=>{
   return !devData.value.power ? getImageUrl('noPeople.png') : devData.value.data_array.length > 1 ?
       getImageUrl('morePeople.png') : getImageUrl('ic_singlePeople.png')
@@ -222,7 +273,8 @@ const peopleScan = computed(()=>{
       getImageUrl('morePeopleScan.png') : getImageUrl('singleScan.png')
 })
 const devImg = computed(()=>{
-  return devData.value.power == 1 ? getImageUrl('ic_openDev.png') : getImageUrl('ic_closeDev.png')
+  return devData.value.power == 1 ? devData.value.swing_mode == 3 ? getImageUrl('ic_openRouFengDev.png') :
+          getImageUrl('ic_openDev.png') : getImageUrl('ic_closeDev.png')
 })
 const powerState = computed(()=>{
   return devData.value.power == 1 ? getImageUrl('ic_wind_speed_open.png') : getImageUrl('ic_wind_speed_close.png')
@@ -230,6 +282,52 @@ const powerState = computed(()=>{
 const gridImgSrc = computed(()=>{
   return devData.value.power == 1 ? getImageUrl('ic_grid_open.png') : getImageUrl('ic_grid_close.png')
 })
+const getheadImg = (item) => {
+  return getImageUrl(`flag${item.id+1}.png`)
+}
+//实际矩形的高度
+const heightA = ref(350 * Math.sin(50 * Math.PI / 180))
+console.log("heightA",heightA.value)
+//实际矩形的宽度 / 2
+const widthA = ref(350 * Math.cos(50 * Math.PI / 180))
+console.log("widthA",widthA.value)
+//矩形的高度转化到UI上的px比例  需要减去人形的高度
+const heightBiLi = ref((320 / heightA.value).toFixed(2))
+console.log("heightBiLi",heightBiLi.value)
+//矩形的宽度转化到UI上的px比例
+const widthBiLi = ref((1012 / widthA.value).toFixed(2))
+console.log("widthBiLi",widthBiLi.value)
+const getPeopleLeft = (item) => {
+//实际距离
+  const left = item.angel == 90 ? item.distance : item.distance * Math.cos((item.angel > 90 ? 180 - item.angel :
+          item.angel) * Math.PI / 180)
+  console.log('left',item.id,left)
+  const leftBiLi = left * widthBiLi.value
+  let leftUi = 0
+  leftUi = item.angel > 90 ? 1000 + leftBiLi : item.angel == 90 ? 1030 : 1100 - leftBiLi
+  if (item.distance > 180){
+    if (item.angel > 90){
+      leftUi = 900 + leftBiLi
+    }else if (item.angel < 90){
+      leftUi = 1180 - leftBiLi
+    }else {
+      leftUi = 1030
+    }
+  }
+  // 将px单位转换为vw单位 (1vw = 38.4px，基于3840px的设计稿)
+  const leftVw = ((leftUi - 100) / 38.4).toFixed(2)
+  return leftVw + "vw" //转化UI的top距离
+}
+const getPeopleTop = (item) => {
+  //实际距离
+  const top = item.distance * Math.sin(item.angel * Math.PI / 180)
+  console.log('top',top)
+  const topUi = top * heightBiLi.value
+  console.log('topUi',topUi)
+  // 将px单位转换为vw单位 (1vw = 38.4px，基于3840px的设计稿)
+  const topVw = ((topUi - 318) / 38.4).toFixed(2)
+  return topVw + "vw" //转化UI的top距离
+}
 const getAreaClass = item => {
   if (item.angel >= 50 && item.angel <= 76 && item.distance >= 0 && item.distance <= 250) {
     return '1'
@@ -278,8 +376,11 @@ const getData = () => {
     devData.value.up_swing_area = data.up_swing_area;
     devData.value.data_array = data.data_array;
     devData.value.speed = data.speed;
-    devData.value.sleep_mode = data.sleep_mode;
+    // devData.value.sleep_mode = data.sleep_mode;
     devData.value.swing_mode = data.swing_mode;
+    devData.value.power = data.power;
+    devData.value.set_temper = data.set_temper;
+    devData.value.id_num = data.id_num;
     WindlessFeeling.value = false;
     data.data_array.forEach(it => {
       if (it.distance <= 250) {
@@ -292,7 +393,7 @@ const getData = () => {
 watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newValue, oldVaule) => {
   // 重新渲染
   console.log(newValue, oldVaule, 'chongxinxuanra');
-  setTimeout(() => { startPlay() }, 500);
+  // setTimeout(() => { startPlay() }, 500);
 })
 
 </script>
@@ -319,7 +420,7 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
 
   .wind_speed_num {
     position: fixed;
-    width: 520px;
+    width: 560px;
     height: 520px;
     top: 6.4%;
     left: 4.2%;
@@ -354,7 +455,7 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       infinite :规定动画应该无限次播放
       */
     .running_anticlockwise {
-      width: 520px;
+      width: 560px;
       position: fixed;
       animation: rotate_anticlockwise 3s linear infinite;
     }
@@ -393,7 +494,7 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
 
     .img_pro {
       height: 636px;
-      z-index: 100;
+      z-index: 102;
       position: absolute;
       transform: translateX(-50%);
       left: 50%;
@@ -403,7 +504,7 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       position: absolute;
       transform: translateX(-50%);
       left: 50%;
-      z-index: 101;
+      z-index: 103;
       top: 3.5%;
     }
     .grid_wind_area{
@@ -431,6 +532,53 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       left: 50%;
       top: 83%;
     }
+    .people_grid_area{
+      position: absolute;
+      //top: 30px;
+      height: 318px;
+      width: 122px;
+      z-index: 110;
+      //left: 50%;
+      .flagBgArea{
+        position: absolute;
+        width: 116px;
+        height: 64px;
+        transform: translateX(-50%);
+        left: 50%;
+      }
+      .peopleFlag{
+        position: absolute;
+        width: 116px;
+        height: 64px;
+        text-align: center;
+        line-height: 60px;
+        top:0;
+        font-size: 40px;
+        font-weight: 600;
+        color: #090808;
+        z-index: 220;
+        transform: translateX(-50%);
+        left: 50%;
+      }
+      .peopleImg{
+        position: absolute;
+        height: 240px;
+        margin-top: 20px;
+        transform: translateX(-50%);
+        left: 50%;
+        top: 58px;
+      }
+    }
+    .grid_areaPeople{
+      position: absolute;
+      height: 430px;
+      width: 2024px;
+      margin-left: 16px;
+      top: 38.5%;
+      transform: translateX(-50%);
+      left: 50%;
+      z-index: 110;
+    }
     .grid_area {
       position: absolute;
       height: 430px;
@@ -442,45 +590,11 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       top: 38.5%;
       transform: translateX(-50%);
       left: 50%;
-      z-index: 200;
+      z-index: 100;
       .gridImg{
         width: 100%;
       }
-      .people_grid_area{
-        position: absolute;
-        top: 30px;
-        height: 318px;
-        width: 122px;
-        left: 50%;
-        .flagBgArea{
-          position: absolute;
-          width: 116px;
-          height: 64px;
-          transform: translateX(-50%);
-          left: 50%;
-        }
-        .peopleFlag{
-          position: absolute;
-          width: 116px;
-          height: 64px;
-          text-align: center;
-          line-height: 60px;
-          font-size: 40px;
-          font-weight: 600;
-          color: #090808;
-          z-index: 220;
-          transform: translateX(-50%);
-          left: 50%;
-        }
-        .peopleImg{
-          position: absolute;
-          height: 240px;
-          margin-top: 20px;
-          transform: translateX(-50%);
-          left: 50%;
-          top: 58px;
-        }
-      }
+
       .grid-item {
         position: absolute;
         left: 0;
@@ -669,7 +783,7 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
         font-weight: 600;
       }
       .itemAngel{
-        width: 150px;
+        width: 120px;
         text-align: left;
         margin-left: 52px;
         font-size: 60px;
