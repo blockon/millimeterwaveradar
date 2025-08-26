@@ -15,22 +15,25 @@
       <!-- 风速 -->
       <div class="wind_speed_num">
         <img class="running_anticlockwise" :style="`animation-duration:${Math.abs(5 - devData.speed)}s`"
-          src="@img/ic_wind_speed.png" />
-        <div class="wind_speed_str">{{ devData.sleep_mode == 1 ? '开机' : '关机' }}</div>
-        <div class="wind_speed_hint">25.5℃ | 中风</div>
+          :src="powerState" :class="{'noScan':devData.power == 0}" />
+        <div class="powertext center">
+          <div class="wind_speed_str">{{ devData.power ? '开机' : '关机' }}</div>
+          <div class="wind_speed_hint" v-if="devData.power">25.5℃ | 中风</div>
+        </div>
       </div>
 
       <!-- 摆风区域 -->
       <div class="wind_area">
-        <img class="img_pro" src="@img/ic_openDev.png" />
-        <img src="@img/fengSuiRenDong.png" class="windArea" />
-
-<!--        <img src="@img/ic_grid.png" class="grid_wind_area" />-->
-        <div class="windModeText">风逆身动</div>
-        <img src="@img/windModeBg.png" class="windModeBgImg"/>
+        <img class="img_pro" :src="devImg" />
+        <div v-if="devData.power">
+          <img src="@img/fengNiShenDong.png" class="windArea" />
+          <div class="windModeText">风逆身动</div>
+          <img src="@img/windModeBg.png" class="windModeBgImg"/>
+        </div>
         <!-- 网格区域 -->
         <div class="grid_area">
-          <div class="people_grid_area">
+          <img :src="gridImgSrc" class="gridImg"/>
+          <div class="people_grid_area" v-if="devData.power">
             <img src="../../assets/imgs/flag1.png" class="flagBgArea">
             <div class="peopleFlag">2.3m</div>
             <img src="@img/people.png" class="peopleImg"/>
@@ -40,14 +43,13 @@
 <!--          </div>-->
 
         </div>
-
       </div>
 
       <!-- 扫风动画 -->
-      <div class="wind_svga">
-        <div id="svgaUp" class="w-full h-full"></div>
-        <div id="svgaDown" class="w-full h-50"></div>
-      </div>
+<!--      <div class="wind_svga">-->
+<!--        <div id="svgaUp" class="w-full h-full"></div>-->
+<!--        <div id="svgaDown" class="w-full h-50"></div>-->
+<!--      </div>-->
 
       <!-- 摆风模式 -->
 <!--      <div class="wind_mode_area">-->
@@ -56,23 +58,20 @@
 <!--      </div>-->
 
     </div>
-
     <!-- 右边-人体状态感知参数区域 -->
     <div class="page_right center">
       <img class="img_title" src="@img/ic_title.png" />
-
       <!-- 热源数量 -->
       <div class="heat_num_area">
         <img class="running_clockwise" :src="peopleBg" />
-        <img class="singleScan" :class="{'noScan':devData.data_array.length === 0}" :src="peopleScan" />
-        <div class="heat_num_str">{{ devData.data_array.length !== 0 ? devData.data_array.length == 1 ? '单人' : '多人' :
-          '无人'
-          }}</div>
-        <div class="heat_num_hint">当前2人，温度降低1度</div>
+        <img class="singleScan" :class="{'noScan':!devData.power}" :src="peopleScan" />
+        <div class="heat_num_str" :class="{'powerOffState':!devData.power}">
+          {{ devData.data_array.length > 0 ? devData.data_array.length == 1 ? '单人' : '多人' : '无人' }}</div>
+        <div class="heat_num_hint" v-if="devData.data_array.length > 0">当前{{devData.data_array.length}}人，温度降低1度</div>
       </div>
 
       <!-- 未检测到人体 -->
-      <div v-if="devData.data_array.length == 0" class="no_body">区域内暂未检测到人体</div>
+      <div v-if="devData.data_array.length == 0 || !devData.power" class="no_body">区域内暂未检测到人体</div>
       <!-- 检测到人体 -->
       <div class="heat_list" v-else>
         <div class="heat_item mid" v-for="(item, index) in devData.data_array" :key="index">
@@ -190,36 +189,46 @@ let devData = ref({
       "angel": 80,   //角度，50-130°
       "distance": 200,   //距离，单位厘米，0-500cm
     },
-    {
-      "id": 2,
-      "angel": 80,   //角度，50-130°
-      "distance": 200,   //距离，单位厘米，0-500cm
-    },
-    {
-      "id": 2,
-      "angel": 80,   //角度，50-130°
-      "distance": 200,   //距离，单位厘米，0-500cm
-    },
-    {
-      "id": 2,
-      "angel": 80,   //角度，50-130°
-      "distance": 200,   //距离，单位厘米，0-500cm
-    },
+    // {
+    //   "id": 3,
+    //   "angel": 80,   //角度，50-130°
+    //   "distance": 200,   //距离，单位厘米，0-500cm
+    // },
+    // {
+    //   "id": 4,
+    //   "angel": 80,   //角度，50-130°
+    //   "distance": 200,   //距离，单位厘米，0-500cm
+    // },
+    // {
+    //   "id": 5,
+    //   "angel": 80,   //角度，50-130°
+    //   "distance": 200,   //距离，单位厘米，0-500cm
+    // },
   ],
   "speed": 1,   //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
   // 扫风时绘制动画 风随人动和风逆人动动画停止，只绘制角度
-  "swing_mode": 0, //扫风方式，0：扫风，1：风随人动，2：风逆人动 
+  "swing_mode": 0, //扫风方式，0：扫风，1：风随人动，2：风逆人动
   "sleep_mode": 1, //睡眠模式，0：关闭，1：打开
   "up_swing_area": 1, //上摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
   "low_swing_area": 1, //下摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
+  "power": 1,
 });
 const peopleBg = computed(()=>{
-  return devData.value.data_array.length === 0 ? getImageUrl('noPeople.png') : devData.value.data_array.length > 1 ?
+  return !devData.value.power ? getImageUrl('noPeople.png') : devData.value.data_array.length > 1 ?
       getImageUrl('morePeople.png') : getImageUrl('ic_singlePeople.png')
 })
 const peopleScan = computed(()=>{
-  return devData.value.data_array.length === 0 ? getImageUrl('noPeopleScan.png') : devData.value.data_array.length > 1 ?
+  return !devData.value.power ? getImageUrl('noPeopleScan.png') : devData.value.data_array.length > 1 ?
       getImageUrl('morePeopleScan.png') : getImageUrl('singleScan.png')
+})
+const devImg = computed(()=>{
+  return devData.value.power == 1 ? getImageUrl('ic_openDev.png') : getImageUrl('ic_closeDev.png')
+})
+const powerState = computed(()=>{
+  return devData.value.power == 1 ? getImageUrl('ic_wind_speed_open.png') : getImageUrl('ic_wind_speed_close.png')
+})
+const gridImgSrc = computed(()=>{
+  return devData.value.power == 1 ? getImageUrl('ic_grid_open.png') : getImageUrl('ic_grid_close.png')
 })
 const getAreaClass = item => {
   if (item.angel >= 50 && item.angel <= 76 && item.distance >= 0 && item.distance <= 250) {
@@ -345,12 +354,16 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       infinite :规定动画应该无限次播放
       */
     .running_anticlockwise {
+      width: 520px;
       position: fixed;
       animation: rotate_anticlockwise 3s linear infinite;
     }
-
+    .powertext{
+      height: 100%;
+      flex-direction: column;
+    }
     .wind_speed_str {
-      margin-top: 150px;
+      //margin-top: 150px;
       height: 134px;
       line-height: 134px;
       font-family: YouSheBiaoTiHei;
@@ -422,14 +435,17 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       position: absolute;
       height: 430px;
       width: 2024px;
-      background-image: url('@img/ic_grid.png');
-      background-size: 100% auto;
-      background-repeat: no-repeat;
+      //background-image: url('@img/ic_grid.png');
+      //background-size: 100% auto;
+      //background-repeat: no-repeat;
       margin-left: 16px;
       top: 38.5%;
       transform: translateX(-50%);
       left: 50%;
       z-index: 200;
+      .gridImg{
+        width: 100%;
+      }
       .people_grid_area{
         position: absolute;
         top: 30px;
@@ -600,9 +616,6 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       top: 50%;
       animation: rotate_clockwise 3s linear infinite;
     }
-    .noScan{
-      animation: none;
-    }
 
     .heat_num_str {
       margin-top: 280px;
@@ -611,6 +624,9 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       font-size: 92px;
       color: #01E7FF;
       font-weight: 400;
+    }
+    .powerOffState{
+      color: #FFFFFF;
     }
 
     .heat_num_hint {
@@ -628,9 +644,9 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
     bottom: 29.7%;
     opacity: 0.8;
     font-family: PingFangSC-Light;
-    font-size: 60px;
-    color: #17FDF9;
-    font-weight: 200;
+    font-size: 64px;
+    color: #C2F9FF;
+    font-weight: 300;
   }
 
   .heat_list {
@@ -688,5 +704,8 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
     color: #C2F9FF;
     font-weight: 300;
   }
+}
+.noScan{
+  animation: none !important;
 }
 </style>
