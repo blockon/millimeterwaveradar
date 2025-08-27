@@ -14,11 +14,11 @@
     <div class="page_left center">
       <!-- 风速 -->
       <div class="wind_speed_num">
-<!--        :style="`animation-duration:${Math.abs(6 - devData.speed)}s`"-->
         <img class="running_anticlockwise" :style="`animation-duration:${Math.abs(6 - devData.speed)}s`" :src="powerState" :class="{'noScan':devData.power == 0}" />
         <div class="powertext center">
           <div class="wind_speed_str">{{ devData.power ? '开机' : '关机' }}</div>
-          <div class="wind_speed_hint" v-if="devData.power">{{devData.set_temper/10}}℃ | {{speedMode}}</div>
+          <div class="wind_speed_hint" v-if="devData.power">{{devData.set_temper/10}}℃ | {{windSpeedArr[devData
+              .speed]}}</div>
         </div>
       </div>
 
@@ -27,15 +27,12 @@
         <img class="img_pro" :src="devImg" />
         <div v-if="devData.power">
           <img :src="windModeImg" class="windArea" />
-          <div class="windModeText">{{windMode}}</div>
+          <div class="windModeText">{{windModeArr[devData.swing_mode-1]}}</div>
           <img src="@img/windModeBg.png" class="windModeBgImg"/>
         </div>
         <!-- 网格区域 -->
         <div class="grid_area">
           <img :src="gridImgSrc" class="gridImg"/>
-<!--          <div v-for="item in devData.data_array" :class="['grid-item', `${'grid-item' + getAreaClass(item)}`]"-->
-<!--            :key="item.id">-->
-<!--          </div>-->
         </div>
         <div class="grid_areaPeople">
           <div class="people_grid_area" v-if="devData.power" v-for="item in devData.data_array"
@@ -48,10 +45,10 @@
       </div>
 
       <!-- 扫风动画 -->
-<!--      <div class="wind_svga">-->
-<!--        <div id="svgaUp" class="w-full h-full"></div>-->
-<!--        <div id="svgaDown" class="w-full h-50"></div>-->
-<!--      </div>-->
+      <div class="wind_svga">
+        <div id="svgaUp" class="w-full h-full"></div>
+        <div id="svgaDown" class="w-full h-50"></div>
+      </div>
 
       <!-- 摆风模式 -->
 <!--      <div class="wind_mode_area">-->
@@ -76,7 +73,9 @@
       <div v-if="devData.data_array.length == 0 || !devData.power" class="no_body">区域内暂未检测到人体</div>
       <!-- 检测到人体 -->
       <div class="heat_list" v-else>
-        <div class="heat_item mid" v-for="(item, index) in devData.data_array" :key="index">
+        <div class="heat_item mid" v-for="(item, index) in devData.data_array.length > 6 ?
+        devData.data_array.slice(0,5) : devData.data_array"
+             :key="index">
           <div class="itemLeft">0{{ item.id + 1 }}</div>
           <img src="@img/ic_map.png" class="itemMap" />
           <div class="itemAngel">{{ item.angel }}°</div>
@@ -84,7 +83,6 @@
           <div style="margin-left: 50px;" class="itemDistance">{{ item.distance / 100 }}m</div>
         </div>
       </div>
-
       <div class="tips">温馨提示：本地热源最多检测6个</div>
     </div>
   </div>
@@ -150,7 +148,7 @@ const playSvga = () => {
 }
 
 
-const windModeArr = ['全域扫风', '风随人动', '风逆人动', '定点出风']
+const windModeArr = ['风随身动', '风逆身动', '人近风柔']
 const windSpeedArr = ['自动风', '微风', '低风', '中风', '高风', '强劲风']
 
 const transfromAngel = (angle) => {
@@ -211,58 +209,22 @@ let devData = ref({
   // 扫风时绘制动画 风随人动和风逆人动动画停止，只绘制角度
   "swing_mode": 2, //扫风方式，1：风随身动，2：风逆身动，3:人近风柔
   "sleep_mode": 1, //睡眠模式，0：关闭，1：打开
-  "up_swing_area": 1, //上摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
+  "up_swing_area": 70, //上摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
   "low_swing_area": 1, //下摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
   "power": 1,
   "set_temper":263
 });
-const speedMode = computed(()=>{
-  let speed = ""
-  switch (devData.value.speed) {
-    case 0:
-      speed = "自动风"
-      break
-    case 1:
-      speed = "微风"
-      break
-    case 2:
-      speed = "低风"
-      break
-    case 3:
-      speed = "中风"
-      break
-    case 4:
-      speed = "高风"
-      break
-    case 5:
-      speed = "强劲风"
-      break
-  }
-  return speed
-})
 const windModeImg = computed(()=>{
-  switch (devData.value.swing_mode) {
-    case 1:
-    case 2:
-      return getImageUrl('fengNiShenDong.png')
-    case 3:
-      return getImageUrl('fengJinRou.png')
+  if (devData.value.swing_mode == 3){
+    return getImageUrl('fengJinRou.png')
   }
-})
-const windMode = computed(()=>{
-  let mode = ""
-  switch (devData.value.swing_mode) {
-    case 1:
-      mode = "风随身动"
-      break
-    case 2:
-      mode = "风逆身动"
-      break
-    case 3:
-      mode = "人近风柔"
-      break
+  if (devData.value.up_swing_area >= 0 && devData.value.up_swing_area < 40){
+    return getImageUrl('fengYe1.png')
+  }else if (devData.value.up_swing_area >= 40 && devData.value.up_swing_area < 80){
+    return getImageUrl('fengYe2.png')
+  }else {
+    return getImageUrl('fengYe3.png')
   }
-  return mode
 })
 const peopleBg = computed(()=>{
   return !devData.value.power ? getImageUrl('noPeople.png') : devData.value.data_array.length > 1 ?
@@ -287,21 +249,21 @@ const getheadImg = (item) => {
 }
 //实际矩形的高度
 const heightA = ref(350 * Math.sin(50 * Math.PI / 180))
-console.log("heightA",heightA.value)
+// console.log("heightA",heightA.value)
 //实际矩形的宽度 / 2
 const widthA = ref(350 * Math.cos(50 * Math.PI / 180))
-console.log("widthA",widthA.value)
+// console.log("widthA",widthA.value)
 //矩形的高度转化到UI上的px比例  需要减去人形的高度
 const heightBiLi = ref((320 / heightA.value).toFixed(2))
-console.log("heightBiLi",heightBiLi.value)
+// console.log("heightBiLi",heightBiLi.value)
 //矩形的宽度转化到UI上的px比例
 const widthBiLi = ref((1012 / widthA.value).toFixed(2))
-console.log("widthBiLi",widthBiLi.value)
+// console.log("widthBiLi",widthBiLi.value)
 const getPeopleLeft = (item) => {
 //实际距离
   const left = item.angel == 90 ? item.distance : item.distance * Math.cos((item.angel > 90 ? 180 - item.angel :
           item.angel) * Math.PI / 180)
-  console.log('left',item.id,left)
+  // console.log('left',item.id,left)
   const leftBiLi = left * widthBiLi.value
   let leftUi = 0
   leftUi = item.angel > 90 ? 1000 + leftBiLi : item.angel == 90 ? 1030 : 1100 - leftBiLi
@@ -321,27 +283,12 @@ const getPeopleLeft = (item) => {
 const getPeopleTop = (item) => {
   //实际距离
   const top = item.distance * Math.sin(item.angel * Math.PI / 180)
-  console.log('top',top)
+  // console.log('top',top)
   const topUi = top * heightBiLi.value
-  console.log('topUi',topUi)
+  // console.log('topUi',topUi)
   // 将px单位转换为vw单位 (1vw = 38.4px，基于3840px的设计稿)
   const topVw = ((topUi - 318) / 38.4).toFixed(2)
   return topVw + "vw" //转化UI的top距离
-}
-const getAreaClass = item => {
-  if (item.angel >= 50 && item.angel <= 76 && item.distance >= 0 && item.distance <= 250) {
-    return '1'
-  } else if (item.angel > 76 && item.angel <= 102 && item.distance >= 0 && item.distance <= 250) {
-    return '2'
-  } else if (item.angel > 102 && item.angel < 130 && item.distance >= 0 && item.distance <= 250) {
-    return '3'
-  } else if (item.angel >= 50 && item.angel <= 76 && item.distance >= 250 && item.distance <= 400) {
-    return '4'
-  } else if (item.angel > 76 && item.angel <= 102 && item.distance >= 250 && item.distance <= 400) {
-    return '5'
-  } else {
-    return '6'
-  }
 }
 const startPlay = () => {
   sgvaObj[0].wind_area = devData.value.up_swing_area;
@@ -506,6 +453,7 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       left: 50%;
       z-index: 103;
       top: 3.5%;
+      margin-left: 5px;
     }
     .grid_wind_area{
       height: 430px;
