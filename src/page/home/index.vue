@@ -211,7 +211,7 @@ let devData = ref({
   "sleep_mode": 1, //睡眠模式，0：关闭，1：打开
   "up_swing_area": 70, //上摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
   "low_swing_area": 1, //下摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
-  "power": 1,
+  "power": 0,
   "set_temper":263
 });
 const windModeImg = computed(()=>{
@@ -266,7 +266,8 @@ const getPeopleLeft = (item) => {
   // console.log('left',item.id,left)
   const leftBiLi = left * widthBiLi.value
   let leftUi = 0
-  leftUi = item.angel > 90 ? 1000 + leftBiLi : item.angel == 90 ? 1030 : 1100 - leftBiLi
+  //由于网格是个椭圆弧，所以左右两边需要特殊处理，不能按照标准圆弧处理
+  //距离大于180，大于90度的位置left需要短一点，不然就超出网格了，同理小于90度的位置left需要多一点
   if (item.distance > 180){
     if (item.angel > 90){
       leftUi = 900 + leftBiLi
@@ -275,6 +276,8 @@ const getPeopleLeft = (item) => {
     }else {
       leftUi = 1030
     }
+  }else {
+    leftUi = item.angel > 90 ? 1000 + leftBiLi : item.angel == 90 ? 1030 : 1100 - leftBiLi
   }
   // 将px单位转换为vw单位 (1vw = 38.4px，基于3840px的设计稿)
   const leftVw = ((leftUi - 100) / 38.4).toFixed(2)
