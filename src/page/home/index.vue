@@ -27,7 +27,7 @@
         <img class="img_pro" :src="devImg" />
         <div v-if="devData.power">
           <img :src="windModeImg" class="windArea" />
-          <div class="windModeText">{{windModeArr[devData.swing_mode-1]}}</div>
+          <div class="windModeText">{{windModeArr[devData.swing_mode]}}</div>
           <img src="@img/windModeBg.png" class="windModeBgImg"/>
         </div>
         <!-- 网格区域 -->
@@ -148,7 +148,7 @@ const playSvga = () => {
 }
 
 
-const windModeArr = ['风随身动', '风逆身动', '人近风柔','全域扫风']
+const windModeArr = ['全域扫风','风随身动', '风逆身动', '人近风柔']
 const windSpeedArr = ['自动风', '微风', '低风', '中风', '高风', '强劲风']
 
 const transfromAngel = (angle) => {
