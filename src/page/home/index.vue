@@ -35,9 +35,9 @@
           <img :src="gridImgSrc" class="gridImg"/>
         </div>
         <div class="grid_areaPeople">
-          <div class="people_grid_area" v-if="devData.power" v-for="item in devData.data_array"
-               :key="item.id" :style="`left:${getPeopleLeft(item)};top:${getPeopleTop(item)}`">
-            <img :src="getheadImg(item)" class="flagBgArea">
+          <div class="people_grid_area" v-if="devData.power" v-for="item in devData.data_array" :key="item.id"
+               :style="`left:${getPeopleLeft(item)};top:${getPeopleTop(item)};z-index:${110 + item.distance}`">
+            <img :src="getHeadImg(item)" class="flagBgArea">
             <div class="peopleFlag">{{item.distance/100}}m</div>
             <img src="@img/people.png" class="peopleImg"/>
           </div>
@@ -74,7 +74,7 @@
       <!-- 检测到人体 -->
       <div class="heat_list" v-else>
         <div class="heat_item mid" v-for="(item, index) in devData.data_array.length > 6 ?
-        devData.data_array.slice(0,5) : devData.data_array"
+        devData.data_array.slice(0,6) : devData.data_array"
              :key="index">
           <div class="itemLeft">{{ item.id >= 9 ? item.id+1 : '0'+(item.id + 1) }}</div>
           <img src="@img/ic_map.png" class="itemMap" />
@@ -148,7 +148,7 @@ const playSvga = () => {
 }
 
 
-const windModeArr = ['风随身动', '风逆身动', '人近风柔']
+const windModeArr = ['风随身动', '风逆身动', '人近风柔','全域扫风']
 const windSpeedArr = ['自动风', '微风', '低风', '中风', '高风', '强劲风']
 
 const transfromAngel = (angle) => {
@@ -176,41 +176,41 @@ let devData = ref({
   "data_array": [
     {
       "id": 0,
-      "angel": 30,   //角度，50-130°
-      "distance": 350,   //距离，单位厘米，0-500cm
+      "angel": 70,   //角度，30-150°
+      "distance": 150,   //距离，单位厘米，0-350cm
     },
     {
       "id": 1,
-      "angel": 50,   //角度，50-130°
-      "distance": 350,   //距离，单位厘米，0-500cm
+      "angel": 110,   //角度，30-150°
+      "distance": 150,   //距离，单位厘米，0-350cm
     },
     {
       "id": 2,
-      "angel": 100,   //角度，50-130°
-      "distance": 200,   //距离，单位厘米，0-500cm
+      "angel": 150,   //角度，30-150°
+      "distance": 150,   //距离，单位厘米，0-350cm
     },
     {
       "id": 9,
-      "angel": 110,   //角度，50-130°
-      "distance": 260,   //距离，单位厘米，0-500cm
+      "angel": 130,   //角度，30-150°
+      "distance": 150,   //距离，单位厘米，0-350cm
     },
     {
       "id": 8,
-      "angel": 120,   //角度，50-130°
-      "distance": 350,   //距离，单位厘米，0-500cm
+      "angel": 90,   //角度，30-150°
+      "distance": 150,   //距离，单位厘米，0-350cm
     },
     {
-      "id": 5,
-      "angel": 130,   //角度，50-130°
-      "distance": 350,   //距离，单位厘米，0-500cm
+      "id": 7,
+      "angel": 30,   //角度，30-150°
+      "distance": 150,   //距离，单位厘米，0-350cm
     },
   ],
   "speed": 3,   //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
   // 扫风时绘制动画 风随人动和风逆人动动画停止，只绘制角度
-  "swing_mode": 2, //扫风方式，1：风随身动，2：风逆身动，3:人近风柔
+  "swing_mode": 4, //扫风方式，1：风随身动，2：风逆身动，3:人近风柔，4:全域扫风
   "sleep_mode": 1, //睡眠模式，0：关闭，1：打开
-  "up_swing_area": 70, //上摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
-  "low_swing_area": 1, //下摆叶摆风区域，0：0区，1：1区，2：2区，3：全域扫风
+  "up_swing_area": 110, //上摆叶摆风区域，0：0区，1：1区，2：2区
+  "low_swing_area": 1, //下摆叶摆风区域，0：0区，1：1区，2：2区
   "power": 1,
   "set_temper":263
 });
@@ -218,9 +218,12 @@ const windModeImg = computed(()=>{
   if (devData.value.swing_mode == 3){
     return getImageUrl('fengJinRou.png')
   }
-  if (devData.value.up_swing_area >= 0 && devData.value.up_swing_area < 40){
+  if (devData.value.swing_mode == 4){
+    return getImageUrl('fengQuanYu.png')
+  }
+  if (devData.value.up_swing_area >= 30 && devData.value.up_swing_area < 70){
     return getImageUrl('fengYe1.png')
-  }else if (devData.value.up_swing_area >= 40 && devData.value.up_swing_area < 80){
+  }else if (devData.value.up_swing_area >= 70 && devData.value.up_swing_area < 110){
     return getImageUrl('fengYe2.png')
   }else {
     return getImageUrl('fengYe3.png')
@@ -242,62 +245,62 @@ const powerState = computed(()=>{
   return devData.value.power == 1 ? getImageUrl('ic_wind_speed_open.png') : getImageUrl('ic_wind_speed_close.png')
 })
 const gridImgSrc = computed(()=>{
-  return devData.value.power == 1 ? getImageUrl('ic_grid_open.png') : getImageUrl('ic_grid_close.png')
+  return devData.value.power == 1 ? getImageUrl('grid_open_new.png') : getImageUrl('grid_close_new.png')
 })
-const getheadImg = (item) => {
-  return getImageUrl(`flag${item.id <= 5 ? item.id + 1 : item.id - 5}.png`)
+const getHeadImg = (item) => {
+  return getImageUrl(`flag${item.id}.png`)
 }
-//实际矩形的高度
-const heightA = ref(350 * Math.sin(30 * Math.PI / 180))
-// console.log("heightA",heightA.value)
-//实际矩形的宽度 / 2
-const widthA = ref(350 * Math.cos(30 * Math.PI / 180))
-// console.log("widthA",widthA.value)
 //矩形的高度转化到UI上的px比例  需要减去人形的高度
-const heightBiLi = ref((320 / heightA.value).toFixed(2))
-// console.log("heightBiLi",heightBiLi.value)
-//矩形的宽度转化到UI上的px比例
-const widthBiLi = ref((1012 / widthA.value).toFixed(2))
-// console.log("widthBiLi",widthBiLi.value)
+//height: 493;width: 1710/2;宽高按照角度30度算下来的斜边是987
+const UIXieBian = 987
+//实际距离的斜边转化到UI上的px比例
+const uiBiLi = (UIXieBian / 350).toFixed(2)
+//标准圆弧的话，高度应该是855，实际UI上是椭圆弧，高度为493，这个椭圆弧图片高度还是不够，所以写了1100来兼容
+const heightUI = (493 / 1150).toFixed(2)
+const oldArr = ref([])
 const getPeopleLeft = (item) => {
-//实际距离
-  const left = item.angel == 90 ? item.distance : item.distance * Math.cos((item.angel > 90 ? 180 - item.angel :
-          item.angel) * Math.PI / 180)
-  // console.log('left',item.id,left)
-  const leftBiLi = left * widthBiLi.value
-  let leftUi = 0
-  //由于网格是个椭圆弧，所以左右两边需要特殊处理，不能按照标准圆弧处理
-  //距离大于180，大于90度的位置left需要短一点，不然就超出网格了，同理小于90度的位置left需要多一点
-  if (item.distance > 200){
-    if (item.angel > 90){
-      leftUi = 960 + leftBiLi
-    }else if (item.angel < 90){
-      leftUi = 1220 - leftBiLi
-    }else {
-      leftUi = 1090
+  //角度变化1-3°，认为人不动，界面小人保持静止；距离变化0-10cm，认为人不动，界面小人保持静止
+  if (oldArr.value.length > 0){
+    for (const listItem in oldArr.value) {
+      if (item.id == listItem.id){
+        if (Math.abs(item.angel - listItem.angel) < 3 || Math.abs(item.distance - listItem.distance) < 10){
+          item.angel = listItem.angel
+          item.distance = listItem.distance
+        }
+      }
     }
-  }else {
-    leftUi = item.angel > 90 ? 1000 + leftBiLi : item.angel == 90 ? 1030 : 1200 - leftBiLi
   }
+  oldArr.value = devData.value.data_array
+  //实际距离按照比例对应到UI上
+  const distanceUI = item.distance * uiBiLi
+//实际距离
+  const left = item.angel == 90 ? distanceUI : distanceUI * Math.cos((item.angel > 90 ? 180 - item.angel :
+          item.angel) * Math.PI / 180)
+  console.log('left',item.id,left)
+  let leftUi = 0
+  leftUi = item.angel > 90 ? 1012 + left : item.angel == 90 ? 1012 : 1012 - left
   // 将px单位转换为vw单位 (1vw = 38.4px，基于3840px的设计稿)
-  const leftVw = ((leftUi - 100) / 38.4).toFixed(2)
+  const leftVw = ((leftUi - 70) / 38.4).toFixed(2)
   return leftVw + "vw" //转化UI的top距离
 }
 const getPeopleTop = (item) => {
-  //实际距离
-  const top = item.angel == 90 ? item.distance : item.distance * Math.sin((item.angel > 90 ? 180 - item.angel :
-      item.angel) * Math.PI / 180)
-  // console.log('top',top)
-  let topUi = top * heightBiLi.value
-  // console.log('topUi',topUi)
-  // 将px单位转换为vw单位 (1vw = 38.4px，基于3840px的设计稿)
-  if (item.distance > 200 && (item.angel > 130) || item.angel < 50){
-      topUi = topUi + 40
-  }else if (item.distance > 200 && (item.angel < 130) || item.angel > 50){
-    topUi = topUi - 30
+  if (oldArr.value.length > 0){
+    for (const listItem in oldArr.value) {
+      if (item.id == listItem.id){
+        if (Math.abs(item.angel - listItem.angel) < 3 || Math.abs(item.distance - listItem.distance) < 10){
+          item.angel = listItem.angel
+          item.distance = listItem.distance
+        }
+      }
+    }
   }
-
-  const topVw = ((topUi - 318) / 38.4).toFixed(2)
+  oldArr.value = devData.value.data_array
+  const distanceUI = item.distance * uiBiLi * heightUI
+  //实际距离
+  let top = item.angel == 90 ? distanceUI : distanceUI * Math.sin((item.angel > 90 ? 180 - item.angel :
+      item.angel) * Math.PI / 180)
+  console.log('top',item.id,top)
+  const topVw = ((top - 318) / 38.4).toFixed(2)
   return topVw + "vw" //转化UI的top距离
 }
 const startPlay = () => {
@@ -529,9 +532,9 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
     }
     .grid_areaPeople{
       position: absolute;
-      height: 540px;
-      width: 2100px;
-      //margin-left: 16px;
+      height: 430px;
+      width: 2024px;
+      margin-left: 16px;
       top: 36.5%;
       transform: translateX(-50%);
       left: 50%;
@@ -539,8 +542,9 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
     }
     .grid_area {
       position: absolute;
-      height: 540px;
-      width: 2100px;
+      //按照宽度1710和角度30度算下来，高应该是493，但是图片高度不够，所以强行加高
+      height: 430px;
+      width: 2024px;
       //background-image: url('@img/ic_grid.png');
       //background-size: 100% auto;
       //background-repeat: no-repeat;
