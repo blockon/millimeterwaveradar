@@ -218,10 +218,10 @@ let devData = ref({
 });
 const windTimer = ref(null)
 const startBaiFeng = () => {
-  windModeImg.value = getImageUrl(`fengYe1.png`)
-  let i = 1
-  let isMax = false
   if (!windTimer.value){
+    let i = 1
+    let isMax = false
+    windModeImg.value = getImageUrl(`fengYe1.png`)
     windTimer.value = setInterval(() => {
       if (!isMax){//左到右
         i++
@@ -382,10 +382,10 @@ onMounted(() => {
     // }
   }, 500);
   // showfengYe()
-  // setTimeout(() => {
-  //   devData.value.swing_mode = 3
+  // setInterval(() => {
+  //   // devData.value.swing_mode = 3
   //   showfengYe()
-  // },4000)
+  // },500)
 })
 onUnmounted(() => {
   clearInterval(timer.value);
