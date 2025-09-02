@@ -26,7 +26,7 @@
       <div class="wind_area">
         <img class="img_pro" :src="devImg" />
         <div v-if="devData.power">
-          <img :src="windModeImg" class="windArea"/>
+          <img :src="windModeImg" class="windArea" :class="{'ml':devData.swing_mode == 0}"/>
 <!--          :style="windAreaStyle"-->
           <img :src="windModeImg" class="windAreaQuanYuBottom" v-if="devData.swing_mode == 0"/>
           <div class="windModeText">{{windModeArr[devData.swing_mode]}}</div>
@@ -225,7 +225,7 @@ const startBaiFeng = () => {
     windTimer.value = setInterval(() => {
       if (!isMax){//左到右
         i++
-        if (i >= 3)
+        if (i >= 5)
           isMax = true
       }else {
         i--
@@ -382,10 +382,10 @@ onMounted(() => {
     // }
   }, 500);
   // showfengYe()
-  // setInterval(() => {
-  //   // devData.value.swing_mode = 3
+  // setTimeout(() => {
+  //   devData.value.swing_mode = 3
   //   showfengYe()
-  // },500)
+  // },5000)
 })
 onUnmounted(() => {
   clearInterval(timer.value);
@@ -538,6 +538,9 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       top: 4%;
       margin-left: 5px;
     }
+    .ml{
+      margin-left: -5px !important;
+    }
     .windAreaQuanYuBottom{
       height: 590px;
       position: absolute;
@@ -545,7 +548,7 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       left: 50%;
       z-index: 103;
       top: 14.5%;
-      margin-left: 5px;
+      margin-left: -5px;
     }
     .grid_wind_area{
       height: 430px;
