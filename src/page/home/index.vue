@@ -26,7 +26,9 @@
       <div class="wind_area">
         <img class="img_pro" :src="devImg" />
         <div v-if="devData.power">
-          <img :src="windModeImg" class="windArea" />
+          <img :src="windModeImg" class="windArea" :style="windAreaStyle"/>
+          <img src="@img/fengQuanYu.png" class="windAreaQuanYuBottom" :style="windAreaStyle" v-if="devData.swing_mode ==
+           0"/>
           <div class="windModeText">{{windModeArr[devData.swing_mode]}}</div>
           <img src="@img/windModeBg.png" class="windModeBgImg"/>
         </div>
@@ -207,9 +209,9 @@ let devData = ref({
   ],
   "speed": 3,   //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
   // 扫风时绘制动画 风随人动和风逆人动动画停止，只绘制角度
-  "swing_mode": 4, //扫风方式，1：风随身动，2：风逆身动，3:人近风柔，4:全域扫风
+  "swing_mode":0, //扫风方式，0:全域扫风，1：风随身动，2：风逆身动，3:人近风柔
   "sleep_mode": 1, //睡眠模式，0：关闭，1：打开
-  "up_swing_area": 110, //上摆叶摆风区域，0：0区，1：1区，2：2区
+  "up_swing_area": 30, //上摆叶摆风区域，0：0区，1：1区，2：2区
   "low_swing_area": 1, //下摆叶摆风区域，0：0区，1：1区，2：2区
   "power": 1,
   "set_temper":263
@@ -218,7 +220,7 @@ const windModeImg = computed(()=>{
   if (devData.value.swing_mode == 3){
     return getImageUrl('fengJinRou.png')
   }
-  if (devData.value.swing_mode == 4){
+  if (devData.value.swing_mode == 0){
     return getImageUrl('fengQuanYu.png')
   }
   if (devData.value.up_swing_area >= 30 && devData.value.up_swing_area < 70){
@@ -227,6 +229,26 @@ const windModeImg = computed(()=>{
     return getImageUrl('fengYe2.png')
   }else {
     return getImageUrl('fengYe3.png')
+  }
+})
+//全域扫风，根据返回up_swing_area角度旋转出风角度
+const windAreaStyle = computed(() => {
+  if (devData.value.swing_mode == 0) {
+    let angle = 0
+    if (devData.value.up_swing_area < 90){
+      angle = 30 - (devData.value.up_swing_area - 30) / 2
+    }else {
+      angle = -(devData.value.up_swing_area - 90) / 2
+    }
+    return {
+      transform: `translateX(-50%) rotate(${angle}deg)`,//rotate(30deg)
+      transformOrigin: 'center top', // 设置旋转原点为上边中心点
+      transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+    };
+  }
+  return {
+    transform: 'translateX(-50%)',
+    transformOrigin: 'center center', // 保持默认中心点旋转
   }
 })
 const peopleBg = computed(()=>{
@@ -259,11 +281,11 @@ const uiBiLi = (UIXieBian / 350).toFixed(2)
 const heightUI = (493 / 1150).toFixed(2)
 const oldArr = ref([])
 const getPeopleLeft = (item) => {
-  //角度变化1-3°，认为人不动，界面小人保持静止；距离变化0-10cm，认为人不动，界面小人保持静止
+  //角度变化1-5°，认为人不动，界面小人保持静止；距离变化0-20cm，认为人不动，界面小人保持静止
   if (oldArr.value.length > 0){
     for (const listItem in oldArr.value) {
       if (item.id == listItem.id){
-        if (Math.abs(item.angel - listItem.angel) < 3 || Math.abs(item.distance - listItem.distance) < 10){
+        if (Math.abs(item.angel - listItem.angel) <= 5 || Math.abs(item.distance - listItem.distance) <= 20){
           item.angel = listItem.angel
           item.distance = listItem.distance
         }
@@ -287,7 +309,7 @@ const getPeopleTop = (item) => {
   if (oldArr.value.length > 0){
     for (const listItem in oldArr.value) {
       if (item.id == listItem.id){
-        if (Math.abs(item.angel - listItem.angel) < 3 || Math.abs(item.distance - listItem.distance) < 10){
+        if (Math.abs(item.angel - listItem.angel) <= 5 || Math.abs(item.distance - listItem.distance) <= 20){
           item.angel = listItem.angel
           item.distance = listItem.distance
         }
@@ -319,6 +341,12 @@ onMounted(() => {
   // startPlay();
   timer.value = setInterval(() => {
     getData();
+    // devData.value.up_swing_area += 10
+    // if (devData.value.up_swing_area == 150){
+    //   devData.value.swing_mode  = 3
+    // }else if (devData.value.up_swing_area == 30){
+    //   devData.value.up_swing_area += 10
+    // }
   }, 500);
 })
 onUnmounted(() => {
@@ -465,7 +493,16 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       transform: translateX(-50%);
       left: 50%;
       z-index: 103;
-      top: 3.5%;
+      top: 4%;
+      margin-left: 5px;
+    }
+    .windAreaQuanYuBottom{
+      height: 590px;
+      position: absolute;
+      transform: translateX(-50%);
+      left: 50%;
+      z-index: 103;
+      top: 14.5%;
       margin-left: 5px;
     }
     .grid_wind_area{
