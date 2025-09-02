@@ -26,9 +26,9 @@
       <div class="wind_area">
         <img class="img_pro" :src="devImg" />
         <div v-if="devData.power">
-          <img :src="windModeImg" class="windArea" :style="windAreaStyle"/>
-          <img src="@img/fengQuanYu.png" class="windAreaQuanYuBottom" :style="windAreaStyle" v-if="devData.swing_mode ==
-           0"/>
+          <img :src="windModeImg" class="windArea"/>
+<!--          :style="windAreaStyle"-->
+          <img :src="windModeImg" class="windAreaQuanYuBottom" v-if="devData.swing_mode == 0"/>
           <div class="windModeText">{{windModeArr[devData.swing_mode]}}</div>
           <img src="@img/windModeBg.png" class="windModeBgImg"/>
         </div>
@@ -216,21 +216,54 @@ let devData = ref({
   "power": 1,
   "set_temper":263
 });
-const windModeImg = computed(()=>{
-  if (devData.value.swing_mode == 3){
-    return getImageUrl('fengJinRou.png')
+const windTimer = ref(null)
+const startBaiFeng = () => {
+  windModeImg.value = getImageUrl(`fengYe1.png`)
+  let i = 1
+  let isMax = false
+  if (!windTimer.value){
+    windTimer.value = setInterval(() => {
+      if (!isMax){//左到右
+        i++
+        if (i >= 3)
+          isMax = true
+      }else {
+        i--
+        if (i <= 1)
+          isMax = false
+      }
+      windModeImg.value = getImageUrl(`fengYe${i}.png`)
+    },1000)
   }
+}
+const clearWindTimer = () => {
+  if (windTimer.value){
+    clearInterval(windTimer.value)
+    windTimer.value = null
+  }
+}
+const windModeImg = ref("")
+const showfengYe = () => {
   if (devData.value.swing_mode == 0){
-    return getImageUrl('fengQuanYu.png')
-  }
-  if (devData.value.up_swing_area >= 30 && devData.value.up_swing_area < 70){
-    return getImageUrl('fengYe1.png')
-  }else if (devData.value.up_swing_area >= 70 && devData.value.up_swing_area < 110){
-    return getImageUrl('fengYe2.png')
+    startBaiFeng()
   }else {
-    return getImageUrl('fengYe3.png')
+    clearWindTimer()
+    if (devData.value.swing_mode == 3){
+      windModeImg.value = getImageUrl('fengJinRou.png')
+      console.log('fengJinRou')
+    }else {
+      if (devData.value.up_swing_area >= 30 && devData.value.up_swing_area < 70){
+        windModeImg.value = getImageUrl('fengYe1.png')
+      }else if (devData.value.up_swing_area >= 70 && devData.value.up_swing_area < 110){
+        windModeImg.value = getImageUrl('fengYe2.png')
+      }else {
+        windModeImg.value = getImageUrl('fengYe3.png')
+      }
+    }
   }
-})
+}
+
+
 //全域扫风，根据返回up_swing_area角度旋转出风角度
 const windAreaStyle = computed(() => {
   if (devData.value.swing_mode == 0) {
@@ -298,7 +331,7 @@ const getPeopleLeft = (item) => {
 //实际距离
   const left = item.angel == 90 ? distanceUI : distanceUI * Math.cos((item.angel > 90 ? 180 - item.angel :
           item.angel) * Math.PI / 180)
-  console.log('left',item.id,left)
+  // console.log('left',item.id,left)
   let leftUi = 0
   leftUi = item.angel > 90 ? 1012 + left : item.angel == 90 ? 1012 : 1012 - left
   // 将px单位转换为vw单位 (1vw = 38.4px，基于3840px的设计稿)
@@ -321,7 +354,7 @@ const getPeopleTop = (item) => {
   //实际距离
   let top = item.angel == 90 ? distanceUI : distanceUI * Math.sin((item.angel > 90 ? 180 - item.angel :
       item.angel) * Math.PI / 180)
-  console.log('top',item.id,top)
+  // console.log('top',item.id,top)
   const topVw = ((top - 318) / 38.4).toFixed(2)
   return topVw + "vw" //转化UI的top距离
 }
@@ -348,9 +381,17 @@ onMounted(() => {
     //   devData.value.up_swing_area += 10
     // }
   }, 500);
+  // showfengYe()
+  // setTimeout(() => {
+  //   devData.value.swing_mode = 3
+  //   showfengYe()
+  // },4000)
 })
 onUnmounted(() => {
   clearInterval(timer.value);
+  if (windTimer.value){
+    clearInterval(windTimer.value);
+  }
 })
 const WindlessFeeling = ref(false);
 const getData = () => {
@@ -376,6 +417,7 @@ const getData = () => {
         WindlessFeeling.value = true;
       }
     })
+    showfengYe()
   })
 }
 watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newValue, oldVaule) => {
