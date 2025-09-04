@@ -374,12 +374,6 @@ onMounted(() => {
   // startPlay();
   timer.value = setInterval(() => {
     getData();
-    // devData.value.up_swing_area += 10
-    // if (devData.value.up_swing_area == 150){
-    //   devData.value.swing_mode  = 3
-    // }else if (devData.value.up_swing_area == 30){
-    //   devData.value.up_swing_area += 10
-    // }
   }, 500);
   // showfengYe()
   // setTimeout(() => {
@@ -431,7 +425,7 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
 <style lang="scss">
 .home_page {
   width: 3840Px;
-  height: 2160Px;
+  height: 100vh;
   background-image: url('@img/ic_home_bg.png');
   background-size: 100% 100%;
   background-repeat: no-repeat;
