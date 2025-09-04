@@ -617,7 +617,7 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       height: 430px;
       width: 2024px;
       margin-left: 16px;
-      top: 36.5%;
+      top: 600px;
       transform: translateX(-50%);
       left: 50%;
       z-index: 110;
