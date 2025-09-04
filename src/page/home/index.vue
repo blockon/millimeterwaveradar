@@ -26,7 +26,7 @@
       <div class="wind_area">
         <img class="img_pro" :src="devImg" />
         <div v-if="devData.power">
-          <img :src="windModeImg" class="windArea" :class="{'ml':devData.swing_mode == 0}"/>
+          <img :src="windModeImg" class="windArea" :class="{'ml':devData.swing_mode != 3}"/>
 <!--          :style="windAreaStyle"-->
           <img :src="windModeImg" class="windAreaQuanYuBottom" v-if="devData.swing_mode == 0"/>
           <div class="windModeText">{{windModeArr[devData.swing_mode]}}</div>
@@ -252,12 +252,16 @@ const showfengYe = () => {
       windModeImg.value = getImageUrl('fengJinRou.png')
       console.log('fengJinRou')
     }else {
-      if (devData.value.up_swing_area >= 30 && devData.value.up_swing_area < 70){
+      if (devData.value.up_swing_area >= 30 && devData.value.up_swing_area < 54){
         windModeImg.value = getImageUrl('fengYe1.png')
-      }else if (devData.value.up_swing_area >= 70 && devData.value.up_swing_area < 110){
+      }else if (devData.value.up_swing_area >= 54 && devData.value.up_swing_area < 78){
         windModeImg.value = getImageUrl('fengYe2.png')
-      }else {
+      }else if (devData.value.up_swing_area >= 78 && devData.value.up_swing_area < 102){
         windModeImg.value = getImageUrl('fengYe3.png')
+      }else if (devData.value.up_swing_area >= 102 && devData.value.up_swing_area < 126){
+        windModeImg.value = getImageUrl('fengYe4.png')
+      } else {
+        windModeImg.value = getImageUrl('fengYe5.png')
       }
     }
   }
@@ -412,6 +416,8 @@ const getData = () => {
       }
     })
     showfengYe()
+  }).catch(e => {
+    console.log(e, '接口异常');
   })
 }
 watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newValue, oldVaule) => {
@@ -621,11 +627,8 @@ watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newVal
       //按照宽度1710和角度30度算下来，高应该是493，但是图片高度不够，所以强行加高
       height: 430px;
       width: 2024px;
-      //background-image: url('@img/ic_grid.png');
-      //background-size: 100% auto;
-      //background-repeat: no-repeat;
-      margin-left: 16px;
-      top: 36.5%;
+      margin-left: -25px;
+      top: 600px;
       transform: translateX(-50%);
       left: 50%;
       z-index: 100;
