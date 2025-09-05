@@ -176,40 +176,40 @@ let devData = ref({
   "json_seq": 2,  //数据包编号，0~65535
   "id_num": 5,  //检测到的人数，0-3人
   "data_array": [
-    {
-      "id": 0,
-      "angel": 70,   //角度，30-150°
-      "distance": 150,   //距离，单位厘米，0-350cm
-    },
-    {
-      "id": 1,
-      "angel": 110,   //角度，30-150°
-      "distance": 150,   //距离，单位厘米，0-350cm
-    },
-    {
-      "id": 2,
-      "angel": 150,   //角度，30-150°
-      "distance": 150,   //距离，单位厘米，0-350cm
-    },
-    {
-      "id": 9,
-      "angel": 130,   //角度，30-150°
-      "distance": 150,   //距离，单位厘米，0-350cm
-    },
-    {
-      "id": 8,
-      "angel": 90,   //角度，30-150°
-      "distance": 150,   //距离，单位厘米，0-350cm
-    },
-    {
-      "id": 7,
-      "angel": 30,   //角度，30-150°
-      "distance": 150,   //距离，单位厘米，0-350cm
-    },
+    // {
+    //   "id": 0,
+    //   "angel": 70,   //角度，30-150°
+    //   "distance": 150,   //距离，单位厘米，0-350cm
+    // },
+    // {
+    //   "id": 1,
+    //   "angel": 110,   //角度，30-150°
+    //   "distance": 150,   //距离，单位厘米，0-350cm
+    // },
+    // {
+    //   "id": 2,
+    //   "angel": 150,   //角度，30-150°
+    //   "distance": 150,   //距离，单位厘米，0-350cm
+    // },
+    // {
+    //   "id": 9,
+    //   "angel": 130,   //角度，30-150°
+    //   "distance": 150,   //距离，单位厘米，0-350cm
+    // },
+    // {
+    //   "id": 8,
+    //   "angel": 90,   //角度，30-150°
+    //   "distance": 150,   //距离，单位厘米，0-350cm
+    // },
+    // {
+    //   "id": 7,
+    //   "angel": 30,   //角度，30-150°
+    //   "distance": 150,   //距离，单位厘米，0-350cm
+    // },
   ],
   "speed": 3,   //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
   // 扫风时绘制动画 风随人动和风逆人动动画停止，只绘制角度
-  "swing_mode":0, //扫风方式，0:全域扫风，1：风随身动，2：风逆身动，3:人近风柔
+  "swing_mode":3, //扫风方式，0:全域扫风，1：风随身动，2：风逆身动，3:人近风柔
   "sleep_mode": 1, //睡眠模式，0：关闭，1：打开
   "up_swing_area": 30, //上摆叶摆风区域，0：0区，1：1区，2：2区
   "low_swing_area": 1, //下摆叶摆风区域，0：0区，1：1区，2：2区
@@ -316,20 +316,7 @@ const UIXieBian = 987
 const uiBiLi = (UIXieBian / 350).toFixed(2)
 //标准圆弧的话，高度应该是855，实际UI上是椭圆弧，高度为493，这个椭圆弧图片高度还是不够，所以写了1100来兼容
 const heightUI = (493 / 1150).toFixed(2)
-const oldArr = ref([])
 const getPeopleLeft = (item) => {
-  //角度变化1-5°，认为人不动，界面小人保持静止；距离变化0-20cm，认为人不动，界面小人保持静止
-  if (oldArr.value.length > 0){
-    for (const listItem in oldArr.value) {
-      if (item.id == listItem.id){
-        if (Math.abs(item.angel - listItem.angel) <= 5 || Math.abs(item.distance - listItem.distance) <= 20){
-          item.angel = listItem.angel
-          item.distance = listItem.distance
-        }
-      }
-    }
-  }
-  oldArr.value = devData.value.data_array
   //实际距离按照比例对应到UI上
   const distanceUI = item.distance * uiBiLi
 //实际距离
@@ -343,17 +330,6 @@ const getPeopleLeft = (item) => {
   return leftVw + "vw" //转化UI的top距离
 }
 const getPeopleTop = (item) => {
-  if (oldArr.value.length > 0){
-    for (const listItem in oldArr.value) {
-      if (item.id == listItem.id){
-        if (Math.abs(item.angel - listItem.angel) <= 5 || Math.abs(item.distance - listItem.distance) <= 20){
-          item.angel = listItem.angel
-          item.distance = listItem.distance
-        }
-      }
-    }
-  }
-  oldArr.value = devData.value.data_array
   const distanceUI = item.distance * uiBiLi * heightUI
   //实际距离
   let top = item.angel == 90 ? distanceUI : distanceUI * Math.sin((item.angel > 90 ? 180 - item.angel :
@@ -381,9 +357,13 @@ onMounted(() => {
   }, 500);
   // showfengYe()
   // setTimeout(() => {
-  //   devData.value.swing_mode = 3
-  //   showfengYe()
-  // },5000)
+  //   getPeopleData( [{
+  //     "id": 7,
+  //     "angel": 35,
+  //     "distance": 180,
+  //     }
+  //   ])
+  // },1500)
 })
 onUnmounted(() => {
   clearInterval(timer.value);
@@ -401,30 +381,39 @@ const getData = () => {
     console.log(data, '接口返回数据');
     devData.value.low_swing_area = data.low_swing_area;
     devData.value.up_swing_area = data.up_swing_area;
-    devData.value.data_array = data.data_array;
+    // devData.value.data_array = data.data_array;
     devData.value.speed = data.speed;
-    // devData.value.sleep_mode = data.sleep_mode;
     devData.value.swing_mode = data.swing_mode;
     devData.value.power = data.power;
     devData.value.set_temper = data.set_temper;
     devData.value.id_num = data.id_num;
-    WindlessFeeling.value = false;
-    data.data_array.forEach(it => {
-      if (it.distance <= 250) {
-        // 只要有距离小于2.5米 都是无风感模式
-        WindlessFeeling.value = true;
-      }
-    })
+    getPeopleData(data.data_array)//处理人形站位
     showfengYe()
   }).catch(e => {
     console.log(e, '接口异常');
   })
 }
-watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newValue, oldVaule) => {
+const getPeopleData = (arr) => {
+  //角度变化1-5°，认为人不动，界面小人保持静止；距离变化0-20cm，认为人不动，界面小人保持静止
+  const devArr = [...arr]
+  if (devArr.length > 0 && devData.value.data_array.length > 0){
+    for (const item of devArr) {
+      for (const devItem of devData.value.data_array) {
+        if (devItem.id == item.id && (Math.abs(item.angel - devItem.angel) <= 5 && Math.abs(item.distance -
+            devItem.distance) <= 20)){
+          item.angel = devItem.angel
+          item.distance = devItem.distance
+        }
+      }
+    }
+  }
+  devData.value.data_array = devArr;
+}
+// watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newValue, oldVaule) => {
   // 重新渲染
-  console.log(newValue, oldVaule, 'chongxinxuanra');
+  // console.log(newValue, oldVaule, 'chongxinxuanra');
   // setTimeout(() => { startPlay() }, 500);
-})
+// })
 
 </script>
 
