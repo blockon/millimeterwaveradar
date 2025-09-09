@@ -17,8 +17,8 @@
         <img class="running_anticlockwise" :style="`animation-duration:${Math.abs(6 - devData.speed)}s`" :src="powerState" :class="{'noScan':devData.power == 0}" />
         <div class="powertext center">
           <div class="wind_speed_str">{{ devData.power ? '开机' : '关机' }}</div>
-          <div class="wind_speed_hint" v-if="devData.power">{{devData.set_temper/10}}℃ | {{windSpeedArr[devData
-              .speed]}}</div>
+          <div class="wind_speed_hint" v-if="devData.power">{{devData.set_temper/10}}℃ | {{devData.swing_mode != 3 ?
+              windSpeedArr[devData.speed] : '柔风'}}</div>
         </div>
       </div>
 
@@ -69,7 +69,7 @@
         <div class="heat_num_str" :class="{'powerOffState':!devData.power}">
           {{ devData.data_array.length > 0 ? devData.data_array.length == 1 ? '单人' : '多人' : '无人' }}</div>
         <div class="heat_num_hint" v-if="devData.power && devData.data_array.length > 0">
-          当前{{devData.id_num}}人，温度降低1度</div>
+          当前{{devData.data_array.length}}人<em v-if="devData.data_array.length > 1">，温度降低1度</em></div>
       </div>
       <!-- 未检测到人体 -->
       <div v-if="devData.data_array.length == 0 || !devData.power" class="no_body">区域内暂未检测到人体</div>
@@ -85,7 +85,7 @@
           <div style="margin-left: 50px;" class="itemDistance">{{ item.distance / 100 }}m</div>
         </div>
       </div>
-      <div class="tips">温馨提示：本地热源最多检测6个</div>
+<!--      <div class="tips">温馨提示：本地热源最多检测6个</div>-->
     </div>
   </div>
 </template>
@@ -174,7 +174,7 @@ let sgvaObj = [
 ];
 let devData = ref({
   "json_seq": 2,  //数据包编号，0~65535
-  "id_num": 5,  //检测到的人数，0-3人
+  "id_num": 2,  //检测到的人数，0-3人
   "data_array": [
     // {
     //   "id": 0,
