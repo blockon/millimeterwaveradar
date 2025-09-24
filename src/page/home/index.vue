@@ -799,7 +799,7 @@ const getPeopleData = (arr) => {
     top: 47%;
 
     .heat_item {
-      width: 900px;
+      width: 1000px;
       height: 128px;
       margin-bottom: 32px;
       border-radius: 16px;
@@ -831,7 +831,7 @@ const getPeopleData = (arr) => {
       }
 
       .item_line {
-        margin-left: 40px;
+        margin-left: 50px;
         width: 2px;
         height: 48px;
         background: #17F4F2;
