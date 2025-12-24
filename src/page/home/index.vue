@@ -211,7 +211,7 @@ let devData = ref({
   ],
   "speed": 3,   //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
   // 扫风时绘制动画 风随人动和风逆人动动画停止，只绘制角度
-  "swing_mode":3, //扫风方式，1：风随人动，2：风避人吹，3:人近风柔
+  "swing_mode":1, //扫风方式，1：风随人动，2：风避人吹，3:人近风柔
   "sleep_mode": 1, //睡眠模式，0：关闭，1：打开
   "up_swing_area": 30, //上摆叶摆风区域，30--150度
   "low_swing_area": 40, //下摆叶摆风区域，30--150度
@@ -546,6 +546,7 @@ const getPeopleData = (arr) => {
       position: absolute;
       transform: translateX(-50%);
       left: 50%;
+      top: 24px;
     }
     .windArea{
       height: 990px;
@@ -563,7 +564,7 @@ const getPeopleData = (arr) => {
       height: 1428px;
       position: absolute;
       left: -268px;
-      top: -354px;
+      top: -330px;
       z-index: 103;
       //top: 14.5%;
       //margin-left: -5px;
