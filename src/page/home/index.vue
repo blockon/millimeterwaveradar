@@ -380,11 +380,11 @@ const clearPlay = () => {
 const timer = ref(null)
 onMounted(() => {
   // startPlay();
-  // timer.value = setInterval(() => {
-  //   getData();
-  // }, 500);
-  getData();
-  showfengYe()
+  timer.value = setInterval(() => {
+    getData();
+  }, 500);
+  // getData();
+  // showfengYe()
   // setTimeout(() => {
   //   getPeopleData( [{
   //     "id": 7,
@@ -448,7 +448,7 @@ const getPeopleData = (arr) => {
 
 <style lang="scss">
 .home_page {
-  width: 1920Px;
+  width: 3840Px;
   height: 100vh;
   background-image: url('@img/ic_home_bg.png');
   background-size: 100% 100%;
