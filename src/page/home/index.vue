@@ -26,10 +26,12 @@
       <div class="wind_area">
         <img class="img_pro" :src="devImg" />
         <div v-if="devData.power">
-          <img :src="windModeImg" class="windArea" :class="{'ml':devData.swing_mode != 3}"/>
-<!--          :style="windAreaStyle"-->
-          <img :src="windModeImg" class="windAreaQuanYuBottom" v-if="devData.swing_mode == 0"/>
-          <div class="windModeText">{{windModeArr[devData.swing_mode]}}</div>
+<!--          <img :src="windModeImg" class="windArea" :class="{'ml':devData.swing_mode != 3}"/>-->
+<!--&lt;!&ndash;          :style="windAreaStyle"&ndash;&gt;-->
+<!--          <img :src="windModeImg" class="windAreaQuanYuBottom" v-if="devData.swing_mode == 0"/>-->
+          <img :src="windModeImg" class="windAreaQuanYuBottom" />
+          <img :src="windModeImg1" class="windAreaQuanYuBottom" />
+          <div class="windModeText">{{windModeArr[devData.swing_mode-1]}}</div>
           <img src="@img/windModeBg.png" class="windModeBgImg"/>
         </div>
         <!-- 网格区域 -->
@@ -67,9 +69,9 @@
         <img class="running_clockwise" :src="peopleBg" />
         <img class="singleScan" :class="{'noScan':!devData.power}" :src="peopleScan" />
         <div class="heat_num_str" :class="{'powerOffState':!devData.power}">
-          {{ devData.data_array.length > 0 ? devData.data_array.length == 1 ? '单人' : '多人' : '无人' }}</div>
-        <div class="heat_num_hint" v-if="devData.power && devData.data_array.length > 0">
-          当前{{devData.data_array.length}}人<em v-if="devData.data_array.length > 1">，温度降低1度</em></div>
+          {{ devData.data_array.length > 0 ? devData.data_array.length == 1 ? '单人' : '双人' : '无人' }}</div>
+<!--        <div class="heat_num_hint" v-if="devData.power && devData.data_array.length > 0">-->
+<!--          当前{{devData.data_array.length}}人<em v-if="devData.data_array.length > 1">，温度降低1度</em></div>-->
       </div>
       <!-- 未检测到人体 -->
       <div v-if="devData.data_array.length == 0 || !devData.power" class="no_body">区域内暂未检测到人体</div>
@@ -85,7 +87,7 @@
           <div style="margin-left: 50px;" class="itemDistance">{{ item.distance / 100 }}m</div>
         </div>
       </div>
-<!--      <div class="tips">温馨提示：本地热源最多检测6个</div>-->
+      <div class="tips">温馨提示：本地热源最多检测2个</div>
     </div>
   </div>
 </template>
@@ -150,7 +152,7 @@ const playSvga = () => {
 }
 
 
-const windModeArr = ['全域扫风','风随身动', '风逆身动', '人近风柔']
+const windModeArr = ['风随人动', '风避人吹', '人近风柔']
 const windSpeedArr = ['自动风', '微风', '低风', '中风', '高风', '强劲风']
 
 const transfromAngel = (angle) => {
@@ -176,20 +178,20 @@ let devData = ref({
   "json_seq": 2,  //数据包编号，0~65535
   "id_num": 2,  //检测到的人数，0-3人
   "data_array": [
-    // {
-    //   "id": 0,
-    //   "angel": 70,   //角度，30-150°
-    //   "distance": 150,   //距离，单位厘米，0-350cm
-    // },
-    // {
-    //   "id": 1,
-    //   "angel": 110,   //角度，30-150°
-    //   "distance": 150,   //距离，单位厘米，0-350cm
-    // },
+    {
+      "id": 0,
+      "angel": 70,   //角度，30-150°
+      "distance": 250,   //距离，单位厘米，0-350cm
+    },
+    {
+      "id": 1,
+      "angel": 110,   //角度，30-150°
+      "distance": 500,   //距离，单位厘米，0-350cm
+    },
     // {
     //   "id": 2,
-    //   "angel": 150,   //角度，30-150°
-    //   "distance": 150,   //距离，单位厘米，0-350cm
+    //   "angel": 90,   //角度，30-150°
+    //   "distance": 100,   //距离，单位厘米，0-350cm
     // },
     // {
     //   "id": 9,
@@ -209,10 +211,10 @@ let devData = ref({
   ],
   "speed": 3,   //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
   // 扫风时绘制动画 风随人动和风逆人动动画停止，只绘制角度
-  "swing_mode":3, //扫风方式，0:全域扫风，1：风随身动，2：风逆身动，3:人近风柔
+  "swing_mode":3, //扫风方式，1：风随人动，2：风避人吹，3:人近风柔
   "sleep_mode": 1, //睡眠模式，0：关闭，1：打开
-  "up_swing_area": 30, //上摆叶摆风区域，0：0区，1：1区，2：2区
-  "low_swing_area": 1, //下摆叶摆风区域，0：0区，1：1区，2：2区
+  "up_swing_area": 30, //上摆叶摆风区域，30--150度
+  "low_swing_area": 40, //下摆叶摆风区域，30--150度
   "power": 1,
   "set_temper":263
 });
@@ -243,7 +245,34 @@ const clearWindTimer = () => {
   }
 }
 const windModeImg = ref("")
+const windModeImg1 = ref("")
 const showfengYe = () => {
+  const imgNameRight = devData.value.swing_mode != 3 ? 'Strong.png' : 'Weak.png'
+  let imgNameLeft = ''
+  if (devData.value.low_swing_area >= 30 && devData.value.low_swing_area < 70){
+    imgNameLeft = 'L_double'
+  }else if (devData.value.low_swing_area >= 70 && devData.value.low_swing_area < 110){
+    imgNameLeft = 'M_double'
+  }else {
+    imgNameLeft = 'R_double'
+  }
+  windModeImg.value = getImageUrl(`${imgNameLeft}${imgNameRight}`)
+    // windModeImg.value = getImageUrl('L_doubleStrong.png')
+    // windModeImg.value = getImageUrl('R_doubleStrong.png')
+    // windModeImg.value = getImageUrl('M_doubleStrong.png')
+    //
+    // windModeImg.value = getImageUrl('M_doubleWeak.png')
+    // windModeImg.value = getImageUrl('L_doubleWeak.png')
+    // windModeImg.value = getImageUrl('R_doubleWeak.png')
+
+
+    // windModeImg.value = getImageUrl('M_rightStrong.png')
+    // windModeImg1.value = getImageUrl('M_leftStrong.png')
+    // windModeImg.value = getImageUrl('L_rightStrong.png')
+    // windModeImg1.value = getImageUrl('L_leftStrong.png')
+  // windModeImg.value = getImageUrl('R_rightStrong.png')
+  //   windModeImg1.value = getImageUrl('R_leftStrong.png')
+  return
   if (devData.value.swing_mode == 0){
     startBaiFeng()
   }else {
@@ -297,14 +326,13 @@ const peopleScan = computed(()=>{
       getImageUrl('morePeopleScan.png') : getImageUrl('singleScan.png')
 })
 const devImg = computed(()=>{
-  return devData.value.power == 1 ? devData.value.swing_mode == 3 ? getImageUrl('ic_openRouFengDev.png') :
-          getImageUrl('ic_openDev.png') : getImageUrl('ic_closeDev.png')
+  return devData.value.power == 1 ? getImageUrl('GHS_open.png') : getImageUrl('GHS_close.png')
 })
 const powerState = computed(()=>{
   return devData.value.power == 1 ? getImageUrl('ic_wind_speed_open.png') : getImageUrl('ic_wind_speed_close.png')
 })
 const gridImgSrc = computed(()=>{
-  return devData.value.power == 1 ? getImageUrl('grid_open_new.png') : getImageUrl('grid_close_new.png')
+  return devData.value.power == 1 ? getImageUrl('grid_open_new.png') : getImageUrl('grid_close_new120.png')
 })
 const getHeadImg = (item) => {
   return getImageUrl(`flag${item.id}.png`)
@@ -313,7 +341,7 @@ const getHeadImg = (item) => {
 //height: 493;width: 1710/2;宽高按照角度30度算下来的斜边是987
 const UIXieBian = 987
 //实际距离的斜边转化到UI上的px比例
-const uiBiLi = (UIXieBian / 350).toFixed(2)
+const uiBiLi = (UIXieBian / 500).toFixed(2)
 //标准圆弧的话，高度应该是855，实际UI上是椭圆弧，高度为493，这个椭圆弧图片高度还是不够，所以写了1100来兼容
 const heightUI = (493 / 1150).toFixed(2)
 const getPeopleLeft = (item) => {
@@ -352,10 +380,11 @@ const clearPlay = () => {
 const timer = ref(null)
 onMounted(() => {
   // startPlay();
-  timer.value = setInterval(() => {
-    getData();
-  }, 500);
-  // showfengYe()
+  // timer.value = setInterval(() => {
+  //   getData();
+  // }, 500);
+  getData();
+  showfengYe()
   // setTimeout(() => {
   //   getPeopleData( [{
   //     "id": 7,
@@ -419,7 +448,7 @@ const getPeopleData = (arr) => {
 
 <style lang="scss">
 .home_page {
-  width: 3840Px;
+  width: 1920Px;
   height: 100vh;
   background-image: url('@img/ic_home_bg.png');
   background-size: 100% 100%;
@@ -531,13 +560,13 @@ const getPeopleData = (arr) => {
       margin-left: -5px !important;
     }
     .windAreaQuanYuBottom{
-      height: 590px;
+      height: 1428px;
       position: absolute;
-      transform: translateX(-50%);
-      left: 50%;
+      left: -268px;
+      top: -354px;
       z-index: 103;
-      top: 14.5%;
-      margin-left: -5px;
+      //top: 14.5%;
+      //margin-left: -5px;
     }
     .grid_wind_area{
       height: 430px;
