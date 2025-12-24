@@ -448,7 +448,7 @@ const getPeopleData = (arr) => {
 
 <style lang="scss">
 .home_page {
-  width: 3840Px;
+  width: 3840px;
   height: 100vh;
   background-image: url('@img/ic_home_bg.png');
   background-size: 100% 100%;
