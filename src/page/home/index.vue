@@ -180,34 +180,44 @@ let devData = ref({
   "data_array": [
     {
       "id": 0,
+      "angel": 90,   //角度，30-150°
+      "distance": 200,   //距离，单位厘米，0-350cm
+    },
+    {
+      "id": 1,
+      "angel": 150,   //角度，30-150°
+      "distance": 250,   //距离，单位厘米，0-350cm
+    },
+    {
+      "id": 2,
+      "angel": 30,   //角度，30-150°
+      "distance": 500,   //距离，单位厘米，0-350cm
+    },
+    {
+      "id": 9,
+      "angel": 30,   //角度，30-150°
+      "distance": 250,   //距离，单位厘米，0-350cm
+    },
+    {
+      "id": 8,
+      "angel": 150,   //角度，30-150°
+      "distance": 200,   //距离，单位厘米，0-350cm
+    },
+    {
+      "id": 7,
+      "angel": 30,   //角度，30-150°
+      "distance": 200,   //距离，单位厘米，0-350cm
+    },
+    {
+      "id": 7,
       "angel": 70,   //角度，30-150°
       "distance": 250,   //距离，单位厘米，0-350cm
     },
     {
-      "id": 1,
-      "angel": 110,   //角度，30-150°
-      "distance": 500,   //距离，单位厘米，0-350cm
+      "id": 7,
+      "angel": 120,   //角度，30-150°
+      "distance": 250,   //距离，单位厘米，0-350cm
     },
-    // {
-    //   "id": 2,
-    //   "angel": 90,   //角度，30-150°
-    //   "distance": 100,   //距离，单位厘米，0-350cm
-    // },
-    // {
-    //   "id": 9,
-    //   "angel": 130,   //角度，30-150°
-    //   "distance": 150,   //距离，单位厘米，0-350cm
-    // },
-    // {
-    //   "id": 8,
-    //   "angel": 90,   //角度，30-150°
-    //   "distance": 150,   //距离，单位厘米，0-350cm
-    // },
-    // {
-    //   "id": 7,
-    //   "angel": 30,   //角度，30-150°
-    //   "distance": 150,   //距离，单位厘米，0-350cm
-    // },
   ],
   "speed": 3,   //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
   // 扫风时绘制动画 风随人动和风逆人动动画停止，只绘制角度
@@ -332,7 +342,7 @@ const powerState = computed(()=>{
   return devData.value.power == 1 ? getImageUrl('ic_wind_speed_open.png') : getImageUrl('ic_wind_speed_close.png')
 })
 const gridImgSrc = computed(()=>{
-  return devData.value.power == 1 ? getImageUrl('grid_open_new.png') : getImageUrl('grid_close_new120.png')
+  return devData.value.power == 1 ? getImageUrl('grid_open_new120.png') : getImageUrl('grid_close_new120.png')
 })
 const getHeadImg = (item) => {
   return getImageUrl(`flag${item.id}.png`)
@@ -535,7 +545,7 @@ const getPeopleData = (arr) => {
 
   .wind_area {
     width: 2037px;
-    margin-top: 20.7%;
+    margin-top: 19.7%;
     text-align: center;
     position: relative;
     z-index: 100;
@@ -635,7 +645,7 @@ const getPeopleData = (arr) => {
       position: absolute;
       height: 430px;
       width: 2024px;
-      margin-left: 16px;
+      margin-left: 10px;
       top: 600px;
       transform: translateX(-50%);
       left: 50%;
@@ -644,9 +654,9 @@ const getPeopleData = (arr) => {
     .grid_area {
       position: absolute;
       //按照宽度1710和角度30度算下来，高应该是493，但是图片高度不够，所以强行加高
-      height: 430px;
-      width: 2024px;
-      margin-left: -25px;
+      height: 490px;
+      width: 1900px;
+      margin-left: -20px;
       top: 600px;
       transform: translateX(-50%);
       left: 50%;
