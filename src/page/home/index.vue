@@ -17,8 +17,7 @@
         <img class="running_anticlockwise" :style="`animation-duration:${Math.abs(6 - devData.speed)}s`" :src="powerState" :class="{'noScan':devData.power == 0}" />
         <div class="powertext center">
           <div class="wind_speed_str">{{ devData.power ? '开机' : '关机' }}</div>
-          <div class="wind_speed_hint" v-if="devData.power">{{devData.set_temper/10}}℃ | {{devData.swing_mode != 3 ?
-              windSpeedArr[devData.speed] : '柔风'}}</div>
+          <div class="wind_speed_hint" v-if="devData.power">{{devData.set_temper/10}}℃ | {{windSpeedArr[devData.speed]}}</div>
         </div>
       </div>
 
@@ -26,12 +25,9 @@
       <div class="wind_area">
         <img class="img_pro" :src="devImg" />
         <div v-if="devData.power">
-<!--          <img :src="windModeImg" class="windArea" :class="{'ml':devData.swing_mode != 3}"/>-->
-<!--&lt;!&ndash;          :style="windAreaStyle"&ndash;&gt;-->
-<!--          <img :src="windModeImg" class="windAreaQuanYuBottom" v-if="devData.swing_mode == 0"/>-->
-          <img :src="windModeImg" class="windAreaQuanYuBottom" />
-          <img :src="windModeImg1" class="windAreaQuanYuBottom" />
-          <div class="windModeText">{{windModeArr[devData.swing_mode-1]}}</div>
+          <img :src="windModeImgLeft" class="windAreaQuanYuBottom" />
+          <img :src="windModeImgRight" class="windAreaQuanYuBottom" />
+          <div class="windModeText">{{devData.swing_mode > 0 ? windModeArr[devData.swing_mode-1]:''}}</div>
           <img src="@img/windModeBg.png" class="windModeBgImg"/>
         </div>
         <!-- 网格区域 -->
@@ -69,7 +65,7 @@
         <img class="running_clockwise" :src="peopleBg" />
         <img class="singleScan" :class="{'noScan':!devData.power}" :src="peopleScan" />
         <div class="heat_num_str" :class="{'powerOffState':!devData.power}">
-          {{ devData.data_array.length > 0 ? devData.data_array.length == 1 ? '单人' : '双人' : '无人' }}</div>
+          {{!devData.power ? '无人' : devData.data_array.length > 0 ? devData.data_array.length == 1 ? '单人' : '双人' : '无人' }}</div>
 <!--        <div class="heat_num_hint" v-if="devData.power && devData.data_array.length > 0">-->
 <!--          当前{{devData.data_array.length}}人<em v-if="devData.data_array.length > 1">，温度降低1度</em></div>-->
       </div>
@@ -80,7 +76,7 @@
         <div class="heat_item mid" v-for="(item, index) in devData.data_array.length > 6 ?
         devData.data_array.slice(0,6) : devData.data_array"
              :key="index">
-          <div class="itemLeft">{{ item.id >= 9 ? item.id+1 : '0'+(item.id + 1) }}</div>
+          <div class="itemLeft">{{ item.id >= 9 ? item.id : '0'+(item.id) }}</div>
           <img src="@img/ic_map.png" class="itemMap" />
           <div class="itemAngel">{{ item.angel }}°</div>
           <div class="item_line"></div>
@@ -94,6 +90,7 @@
 
 <script setup>
 import SVGA from 'svgaplayerweb'
+import {P_8009369} from '@/utils/analysis.js'
 
 let isReverse = {}
 let player = {};
@@ -178,53 +175,23 @@ let devData = ref({
   "json_seq": 2,  //数据包编号，0~65535
   "id_num": 2,  //检测到的人数，0-3人
   "data_array": [
-    {
-      "id": 0,
-      "angel": 90,   //角度，30-150°
-      "distance": 200,   //距离，单位厘米，0-350cm
-    },
-    {
-      "id": 1,
-      "angel": 150,   //角度，30-150°
-      "distance": 250,   //距离，单位厘米，0-350cm
-    },
-    {
-      "id": 2,
-      "angel": 30,   //角度，30-150°
-      "distance": 500,   //距离，单位厘米，0-350cm
-    },
-    {
-      "id": 9,
-      "angel": 30,   //角度，30-150°
-      "distance": 250,   //距离，单位厘米，0-350cm
-    },
-    {
-      "id": 8,
-      "angel": 150,   //角度，30-150°
-      "distance": 200,   //距离，单位厘米，0-350cm
-    },
-    {
-      "id": 7,
-      "angel": 30,   //角度，30-150°
-      "distance": 200,   //距离，单位厘米，0-350cm
-    },
-    {
-      "id": 7,
-      "angel": 70,   //角度，30-150°
-      "distance": 250,   //距离，单位厘米，0-350cm
-    },
-    {
-      "id": 7,
-      "angel": 120,   //角度，30-150°
-      "distance": 250,   //距离，单位厘米，0-350cm
-    },
+    // {
+    //   "id": 0,
+    //   "angel": 90,   //角度，30-150°
+    //   "distance": 200,   //距离，单位厘米，0-500cm
+    // },
+    // {
+    //   "id": 1,
+    //   "angel": 150,   //角度，30-150°
+    //   "distance": 250,   //距离，单位厘米，0-500cm
+    // }
   ],
-  "speed": 3,   //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
+  "speed": 4,   //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
   // 扫风时绘制动画 风随人动和风逆人动动画停止，只绘制角度
-  "swing_mode":1, //扫风方式，1：风随人动，2：风避人吹，3:人近风柔
+  "swing_mode":0, //扫风方式，1：风随人动，2：风避人吹，3:人近风柔
   "sleep_mode": 1, //睡眠模式，0：关闭，1：打开
-  "up_swing_area": 30, //上摆叶摆风区域，30--150度
-  "low_swing_area": 40, //下摆叶摆风区域，30--150度
+  "left_swing_area": 0, //上(左)摆叶摆风区域，0--100度   0度是中间 50度斜前方 左边是100，只有这三种情况
+  "right_swing_area": 0, //下（右）摆叶摆风区域，0--100度   0度是中间，50度斜前方 右边是100
   "power": 1,
   "set_temper":263
 });
@@ -254,67 +221,65 @@ const clearWindTimer = () => {
     windTimer.value = null
   }
 }
-const windModeImg = ref("")
-const windModeImg1 = ref("")
+const windModeImgLeft = ref("")
+const windModeImgRight = ref("")
 const showfengYe = () => {
-  const imgNameRight = devData.value.swing_mode != 3 ? 'Strong.png' : 'Weak.png'
   let imgNameLeft = ''
-  if (devData.value.low_swing_area >= 30 && devData.value.low_swing_area < 70){
-    imgNameLeft = 'L_double'
-  }else if (devData.value.low_swing_area >= 70 && devData.value.low_swing_area < 110){
-    imgNameLeft = 'M_double'
-  }else {
-    imgNameLeft = 'R_double'
-  }
-  windModeImg.value = getImageUrl(`${imgNameLeft}${imgNameRight}`)
-    // windModeImg.value = getImageUrl('L_doubleStrong.png')
-    // windModeImg.value = getImageUrl('R_doubleStrong.png')
-    // windModeImg.value = getImageUrl('M_doubleStrong.png')
-    //
-    // windModeImg.value = getImageUrl('M_doubleWeak.png')
-    // windModeImg.value = getImageUrl('L_doubleWeak.png')
-    // windModeImg.value = getImageUrl('R_doubleWeak.png')
-
-
-    // windModeImg.value = getImageUrl('M_rightStrong.png')
-    // windModeImg1.value = getImageUrl('M_leftStrong.png')
-    // windModeImg.value = getImageUrl('L_rightStrong.png')
-    // windModeImg1.value = getImageUrl('L_leftStrong.png')
-  // windModeImg.value = getImageUrl('R_rightStrong.png')
-  //   windModeImg1.value = getImageUrl('R_leftStrong.png')
-  return
+  let imgNameRight = ''
+  let imgNameLeftLast = devData.value.speed > 2 ? 'Strong.png' : 'Weak.png'
+  let imgNameRightLast = devData.value.speed > 2 ? 'Strong.png' : 'Weak.png'
+  //left_swing_area：左边摆叶（0--100） right_swing_area：右边摆叶（0--100）
+  //devData.value.swing_mode == 0说明当前没有运行风随人动那些模式，不显示摆叶
   if (devData.value.swing_mode == 0){
-    startBaiFeng()
-  }else {
-    clearWindTimer()
-    if (devData.value.swing_mode == 3){
-      windModeImg.value = getImageUrl('fengJinRou.png')
-      console.log('fengJinRou')
-    }else {
-      if (devData.value.up_swing_area >= 30 && devData.value.up_swing_area < 54){
-        windModeImg.value = getImageUrl('fengYe1.png')
-      }else if (devData.value.up_swing_area >= 54 && devData.value.up_swing_area < 78){
-        windModeImg.value = getImageUrl('fengYe2.png')
-      }else if (devData.value.up_swing_area >= 78 && devData.value.up_swing_area < 102){
-        windModeImg.value = getImageUrl('fengYe3.png')
-      }else if (devData.value.up_swing_area >= 102 && devData.value.up_swing_area < 126){
-        windModeImg.value = getImageUrl('fengYe4.png')
-      } else {
-        windModeImg.value = getImageUrl('fengYe5.png')
+    imgNameLeft = ''
+    imgNameRight= ''
+  } else if (devData.value.right_swing_area == 100 && devData.value.left_swing_area == 100){
+    imgNameLeft = 'L_L'//最大角度
+    imgNameRight = 'R_R'//最大角度
+  } else if (devData.value.right_swing_area <= 50 && devData.value.left_swing_area <= 50){
+    imgNameLeft = 'L_M'//中间角度
+    imgNameRight = 'R_M'//中间角度
+  }else if (devData.value.right_swing_area < 50 && devData.value.left_swing_area > 50 ){//整体往左吹
+    imgNameLeft = 'L_L'
+    imgNameRight = 'R_L'
+  }else if (devData.value.right_swing_area > 50 && devData.value.left_swing_area < 50){//整体往右吹
+    imgNameLeft = 'L_R'
+    imgNameRight = 'R_R'
+  }
+  // 风避人吹时
+  if (devData.value.swing_mode == 2 ){
+    if (devData.value.data_array.length == 2){//双人场景 1、风避人吹时都是短风+弱风
+      imgNameLeftLast = 'Weak.png'
+      imgNameRightLast = 'Weak.png'
+    }else if (devData.value.data_array.length == 1){
+      //单人场景1、风避人吹时人在左或右，一个强风一个弱风，中间的时候两边角度最大两边都是弱风+短风
+      if (devData.value.right_swing_area < 50 && devData.value.left_swing_area > 50 ){//整体往左吹
+        imgNameLeftLast = 'Strong.png'
+        imgNameRightLast = 'Weak.png'
+      }else if (devData.value.right_swing_area > 50 && devData.value.left_swing_area < 50){//整体往右吹
+        imgNameLeftLast = 'Weak.png'
+        imgNameRightLast = 'Strong.png'
+      }else if (devData.value.right_swing_area == 100 && devData.value.left_swing_area == 100){
+        imgNameLeftLast = 'Weak.png'
+        imgNameRightLast = 'Weak.png'
       }
     }
   }
+  windModeImgLeft.value = ''
+  windModeImgRight.value = ''
+  if (imgNameLeft.length > 0 && imgNameRight.length > 0){
+    windModeImgLeft.value = getImageUrl(`${imgNameLeft}${imgNameLeftLast}`)
+    windModeImgRight.value = getImageUrl(`${imgNameRight}${imgNameRightLast}`)
+  }
 }
-
-
 //全域扫风，根据返回up_swing_area角度旋转出风角度
 const windAreaStyle = computed(() => {
   if (devData.value.swing_mode == 0) {
     let angle = 0
-    if (devData.value.up_swing_area < 90){
-      angle = 30 - (devData.value.up_swing_area - 30) / 2
+    if (devData.value.left_swing_area < 90){
+      angle = 30 - (devData.value.left_swing_area - 30) / 2
     }else {
-      angle = -(devData.value.up_swing_area - 90) / 2
+      angle = -(devData.value.left_swing_area - 90) / 2
     }
     return {
       transform: `translateX(-50%) rotate(${angle}deg)`,//rotate(30deg)
@@ -377,8 +342,8 @@ const getPeopleTop = (item) => {
   return topVw + "vw" //转化UI的top距离
 }
 const startPlay = () => {
-  sgvaObj[0].wind_area = devData.value.up_swing_area;
-  sgvaObj[1].wind_area = devData.value.low_swing_area;
+  sgvaObj[0].wind_area = devData.value.left_swing_area;
+  sgvaObj[1].wind_area = devData.value.right_swing_area;
   playSvga()
 }
 // 停止播放
@@ -412,14 +377,23 @@ onUnmounted(() => {
 })
 const WindlessFeeling = ref(false);
 const getData = () => {
+  // const data = "55AAAF0117001A03000A0147010600000000000000060002E50201060002000002060002E50200070001000107000100020700010006070001000707000100080700023CDC09070001000A070001000B070001000109000200000209000100030900020000060900020000070900020000080900025C030B09000200000C09000200000D090002F4010E09000200000F09000200001009000200001109000200001209000200001F09000200006208"
+  // const data1 = "55AAC802170000010001010101000100020100018C03010001030401000132050100010006010001000002000104010200010302020001000302000100040200010005020001000602000100070200010008020002000009020001000A02000100010300010009030001000A03000200000B030001000D03000238380E03000100100300023838110300010013030002646414030001001603000264641703000100180300010019030001001C030001001E03000238381F030001002103000238380204000108070400010108040001010E04000401010100000500020000020500010103050004000000000405000400000000050500090016000700000000000705000100080500040000000009050004000000000A050001000B050004000000000C050001080D050001000F050001001005000100110500010012050001001305000100AE09"
+  // dealData(data)
+  // setTimeout(() => {
+  //   dealData(data1)
+  // },1000)
+  // return
   http({
     method: 'POST',
     url: "/api/getData"
   }).then(data => {
     if (!data) return;
     console.log(data, '接口返回数据');
-    devData.value.low_swing_area = data.low_swing_area;
-    devData.value.up_swing_area = data.up_swing_area;
+    dealData(data.data)
+    return;
+    devData.value.right_swing_area = data.right_swing_area;
+    devData.value.left_swing_area = data.left_swing_area;
     // devData.value.data_array = data.data_array;
     devData.value.speed = data.speed;
     devData.value.swing_mode = data.swing_mode;
@@ -429,8 +403,67 @@ const getData = () => {
     getPeopleData(data.data_array)//处理人形站位
     showfengYe()
   }).catch(e => {
-    console.log(e, '接口异常');
+    // console.log(e, '接口异常');
   })
+}
+const js =  new P_8009369()
+const dealData = (data) => {
+  let newStatusStr = js.fromDevice(data)
+  try {
+    let newStatus = JSON.parse(newStatusStr)
+    const reported = newStatus.state.reported
+    if (reported) {
+      console.log('前端解析上报数据----->', reported)
+      console.log('前端解析上报数据风随radarWindFollowPeople----->', reported?.radarWindFollowPeople)
+      console.log('前端解析上报数据风避radarWindAvoidPeople----->', reported?.radarWindAvoidPeople)
+      console.log('前端解析上报数据人近radarPeopleNearSoftWind----->', reported?.radarPeopleNearSoftWind)
+      console.log('前端解析上报数据actualMark----->', reported?.actualMark)
+      devData.value.right_swing_area = (reported?.actAnglePositionForHordirH2 !== undefined) ?
+          reported?.actAnglePositionForHordirH2 : devData.value.right_swing_area
+      devData.value.left_swing_area = (reported?.actAnglePositionForHordir !== undefined) ?
+          reported?.actAnglePositionForHordir : devData.value.left_swing_area
+      devData.value.speed = (reported?.actualMark !== undefined) ?  reported?.actualMark : devData.value.speed
+      if (reported?.radarWindFollowPeople == 0 || reported?.radarWindAvoidPeople == 0 ||
+          reported?.radarPeopleNearSoftWind == 0){
+        devData.value.swing_mode = 0
+      }
+      if (reported?.radarWindFollowPeople == 1 || reported?.radarWindAvoidPeople == 1 ||
+          reported?.radarPeopleNearSoftWind == 1){
+        devData.value.swing_mode = reported?.radarWindFollowPeople == 1 ? 1 : reported?.radarWindAvoidPeople == 1 ? 2
+            : reported?.radarPeopleNearSoftWind == 1 ? 3 : 0
+      }
+      console.log("前端解析power",reported.power)
+      devData.value.power = (reported?.power !== undefined) ? reported.power : devData.value.power
+      devData.value.set_temper = (reported?.settemp !== undefined) ? reported?.settemp : devData.value.set_temper
+      devData.value.id_num = (reported?.radarTargetCount !== undefined) ?  reported?.radarTargetCount : devData.value.id_num
+      if (reported?.radarTargetCount == 1){
+        getPeopleData([
+          {
+            "id": reported?.radarTarget1Speed,
+            "angel": reported?.radarTarget1Angle + 30,   //角度，30-150°
+            "distance": reported?.radarTarget1Distance * 10,   //距离，单位厘米，0-350cm
+          }
+        ])
+      }else if (reported?.radarTargetCount == 2){
+        getPeopleData([
+          {
+            "id": reported?.radarTarget1Speed,
+            "angel": reported?.radarTarget1Angle + 30,   //角度，30-150°
+            "distance": reported?.radarTarget1Distance * 10,   //距离，单位厘米，0-350cm
+          },
+          {
+            "id": reported?.radarTarget2Speed,
+            "angel": reported?.radarTarget2Angle + 30,   //角度，30-150°
+            "distance": reported?.radarTarget2Distance * 10,   //距离，单位厘米，0-350cm
+          }
+        ])
+      }
+      showfengYe()
+      console.log('前端解析处理后的数据----->', devData.value)
+    }
+  } catch (e){
+    console.error(e, 'updateCurStatus，数据解析失败')
+  }
 }
 const getPeopleData = (arr) => {
   //角度变化1-5°，认为人不动，界面小人保持静止；距离变化0-20cm，认为人不动，界面小人保持静止

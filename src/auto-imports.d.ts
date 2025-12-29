@@ -4,6 +4,7 @@ declare global {
   const EffectScope: typeof import('vue')['EffectScope']
   const EventBus: typeof import('./utils/eventBus.js')['EventBus']
   const NativeActions: typeof import('./utils/nativeActions.js')['NativeActions']
+  const P_8009369: typeof import('./utils/analysis.js')['P_8009369']
   const Tools: typeof import('./utils/tools.js')['Tools']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const commonApi: typeof import('./api/commonApi.js')['default']
@@ -94,6 +95,7 @@ declare module 'vue' {
     readonly EffectScope: UnwrapRef<typeof import('vue')['EffectScope']>
     readonly EventBus: UnwrapRef<typeof import('./utils/eventBus.js')['EventBus']>
     readonly NativeActions: UnwrapRef<typeof import('./utils/nativeActions.js')['NativeActions']>
+    readonly P_8009369: UnwrapRef<typeof import('./utils/analysis.js')['P_8009369']>
     readonly Tools: UnwrapRef<typeof import('./utils/tools.js')['Tools']>
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>
     readonly commonApi: UnwrapRef<typeof import('./api/commonApi.js')['default']>
