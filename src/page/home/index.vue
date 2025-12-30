@@ -251,6 +251,10 @@ const showfengYe = () => {
     if (devData.value.data_array.length == 2){//双人场景 1、风避人吹时都是短风+弱风
       imgNameLeftLast = 'Weak.png'
       imgNameRightLast = 'Weak.png'
+      if (devData.value.right_swing_area == 100 && devData.value.left_swing_area == 100){
+        imgNameLeft = 'L_LSmall'//最大角度,但是风只有一半
+        imgNameRight = 'R_RSmall'//最大角度,但是风只有一半
+      }
     }else if (devData.value.data_array.length == 1){
       //单人场景1、风避人吹时人在左或右，一个强风一个弱风，中间的时候两边角度最大两边都是弱风+短风
       if (devData.value.right_swing_area < 50 && devData.value.left_swing_area > 50 ){//整体往左吹
@@ -260,6 +264,8 @@ const showfengYe = () => {
         imgNameLeftLast = 'Weak.png'
         imgNameRightLast = 'Strong.png'
       }else if (devData.value.right_swing_area == 100 && devData.value.left_swing_area == 100){
+        imgNameLeft = 'L_LSmall'//最大角度,但是风只有一半
+        imgNameRight = 'R_RSmall'//最大角度,但是风只有一半
         imgNameLeftLast = 'Weak.png'
         imgNameRightLast = 'Weak.png'
       }
