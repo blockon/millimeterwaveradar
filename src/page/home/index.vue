@@ -464,6 +464,9 @@ const dealData = (data) => {
           }
         ])
       }
+      if (reported?.radarTargetCount == 0){
+        devData.value.data_array = []
+      }
       showfengYe()
       console.log('前端解析处理后的数据----->', devData.value)
     }
