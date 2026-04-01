@@ -16,5 +16,6 @@ declare module '@vue/runtime-core' {
     CommonSeting: typeof import('./src/components/CommonSeting.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ThreeStickmanView: typeof import('./src/components/ThreeStickmanView.vue')['default']
   }
 }

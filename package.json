@@ -27,6 +27,7 @@
     "pinia": "2.0.22",
     "pinia-plugin-persistedstate": "2.2.0",
     "svgaplayerweb": "2.3.2",
+    "three": "^0.181.0",
     "vant": "4.0.1",
     "vconsole": "3.14.7",
     "vite-plugin-html": "3.2.0",
@@ -37,6 +38,7 @@
   "devDependencies": {
     "@rollup/plugin-inject": "5.0.2",
     "@vitejs/plugin-vue": "3.1.0",
+    "eslint": "^8.57.1",
     "postcss-px-to-viewport": "1.1.1",
     "rollup-plugin-commonjs": "10.1.0",
     "rollup-plugin-copy": "3.4.0",

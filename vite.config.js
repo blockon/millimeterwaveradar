@@ -127,6 +127,19 @@ export default ({ mode }) => {
           changeOrigin: true,
           rewrite: path => path.replace(RegExp(`^api`), '')
         },
+        '/radar-api': {
+          target: 'https://mmradar.inchitech.com',
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/radar-api/, ''),
+        },
+        '/radar-ws': {
+          target: 'wss://mmradar.inchitech.com',
+          changeOrigin: true,
+          ws: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/radar-ws/, ''),
+        },
       }
     },
   })

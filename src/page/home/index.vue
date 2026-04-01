@@ -11,6 +11,26 @@
 <template>
   <!-- 左边-空调摆风区域 -->
   <div class="home_page mid">
+    <button class="radar_settings_btn" @click="showLoginPanel = true">设置</button>
+
+    <div v-if="showLoginPanel" class="radar_control_mask" @click.self="showLoginPanel = false">
+      <div class="radar_control_panel">
+        <button class="control_close_btn" @click="showLoginPanel = false">×</button>
+        <div class="control_title">雷达连接设置</div>
+        <input v-model.trim="radarLoginForm.username" class="control_input" placeholder="用户名/手机号" />
+        <input v-model="radarLoginForm.password" class="control_input" type="password" placeholder="密码" />
+        <input v-model.trim="radarLoginForm.deviceId" class="control_input" placeholder="设备ID" />
+        <div class="control_actions">
+          <button class="control_btn" :disabled="loginLoading || radarConnecting" @click="handleLoginAndConnect">
+            {{ loginLoading ? "登录中..." : radarConnecting ? "连接中..." : "登录并展示" }}
+          </button>
+        </div>
+        <div class="control_status" :class="{ error: radarError }">
+          {{ radarError || (radarConnected ? "已连接，数据实时展示中" : "未连接") }}
+        </div>
+      </div>
+    </div>
+
     <div class="page_left center">
       <!-- 风速 -->
       <div class="wind_speed_num">
@@ -32,7 +52,19 @@
         </div>
         <!-- 网格区域 -->
         <div class="grid_area">
-          <img :src="gridImgSrc" class="gridImg"/>
+          <!-- <img :src="gridImgSrc" class="gridImg"/> -->
+          <div class="radar_skeleton_layer">
+            <ThreeStickmanView
+              :kpts-data="latestKpts"
+              :track-ids="radarTrackIds"
+              :point-cloud-data="latestPointCloud"
+              :room-config="roomConfig"
+              :radar-params="radarParams"
+              :show-skeleton="true"
+              :show-point-cloud="false"
+              skeleton-mode="stickman"
+            />
+          </div>
         </div>
         <div class="grid_areaPeople">
           <div class="people_grid_area" v-if="devData.power" v-for="item in devData.data_array" :key="item.id"
@@ -69,6 +101,18 @@
 <!--        <div class="heat_num_hint" v-if="devData.power && devData.data_array.length > 0">-->
 <!--          当前{{devData.data_array.length}}人<em v-if="devData.data_array.length > 1">，温度降低1度</em></div>-->
       </div>
+      <div class="radar_point_cloud_panel">
+        <ThreeStickmanView
+          :kpts-data="latestKpts"
+          :track-ids="radarTrackIds"
+          :point-cloud-data="latestPointCloud"
+          :room-config="roomConfig"
+          :radar-params="radarParams"
+          :show-skeleton="false"
+          :show-point-cloud="true"
+          skeleton-mode="stickman"
+        />
+      </div>
       <!-- 未检测到人体 -->
       <div v-if="devData.data_array.length == 0 || !devData.power" class="no_body">区域内暂未检测到人体</div>
       <!-- 检测到人体 -->
@@ -91,12 +135,213 @@
 <script setup>
 import SVGA from 'svgaplayerweb'
 import {P_8009369} from '@/utils/analysis.js'
+import ThreeStickmanView from "@/components/ThreeStickmanView.vue"
+import { AUTH_API, RADAR_WS_URL } from "@/config/radarApi"
+import sessionManager from "@/utils/login/sessionManager"
+import { binaryToString } from "@/utils/binaryToString"
+import { parseCompressedPcloud } from "@/utils/parse_compressed_pcloud"
 
 let isReverse = {}
 let player = {};
 let parser = {};
 let isLoadFile = {};
 let range = {}
+const radarTrackIds = ref([])
+const latestKpts = ref([])
+const latestPointCloud = ref([])
+const radarParams = ref({})
+const roomConfig = ref({ width: 5, depth: 5 })
+const showLoginPanel = ref(false)
+const radarLoginForm = reactive({
+  username: localStorage.getItem("radarLoginUsername") || "",
+  password: "",
+  deviceId: (localStorage.getItem("radarDeviceId") || import.meta.env.VITE_RADAR_DEVICE_ID || "").trim(),
+})
+const radarConnected = ref(false)
+const radarConnecting = ref(false)
+const radarError = ref("")
+const loginLoading = ref(false)
+let radarWs = null
+let radarInitTimeoutId = null
+
+const resetRadarState = () => {
+  radarTrackIds.value = []
+  latestKpts.value = []
+  latestPointCloud.value = []
+  radarParams.value = {}
+  roomConfig.value = { width: 5, depth: 5 }
+}
+
+const connectRadarWs = (deviceId, token = "") => {
+  if (!deviceId) {
+    radarError.value = "请输入设备ID"
+    return
+  }
+  radarConnecting.value = true
+  radarError.value = ""
+  try {
+    radarWs = new WebSocket(RADAR_WS_URL)
+    radarWs.onopen = () => {
+      radarConnected.value = true
+      radarConnecting.value = false
+      const initData = {
+        deviceID: deviceId,
+        type: "1",
+        session: Date.now().toString(),
+        content: "start",
+        startTime: "",
+        endTime: "",
+        deviceID1: "",
+        deviceID2: "",
+        scene: "",
+        multiradar: "",
+        token,
+      }
+      radarInitTimeoutId = setTimeout(() => {
+        radarInitTimeoutId = null
+        if (radarWs && radarWs.readyState === WebSocket.OPEN) {
+          radarWs.send(JSON.stringify(initData))
+        }
+      }, 500)
+    }
+    radarWs.onmessage = async (event) => {
+      try {
+        const raw = event.data
+        const str = typeof raw === "string" ? raw : await binaryToString(raw)
+        const data = JSON.parse(str)
+        if (Array.isArray(data.track_id)) radarTrackIds.value = data.track_id
+        if (Array.isArray(data.kpts)) latestKpts.value = data.kpts
+        if (data.rawpc != null && data.rawpc !== "") {
+          latestPointCloud.value = parseCompressedPcloud(data.rawpc, 5)
+        } else {
+          latestPointCloud.value = []
+        }
+        if (data.RadarParams) {
+          const r = data.RadarParams
+          radarParams.value = {
+            radarHeight: r.radarHeight ?? null,
+            radarX_room: r.radarX_room ?? r.radarXroom ?? null,
+            radarY_room: r.radarY_room ?? r.radarYroom ?? null,
+            radarAzimuth_room: r.radarAzimuth_room ?? r.radarAzimuthroom ?? r.azimuth_room ?? null,
+            downtAngle: r.downtAngle ?? null,
+            radarRoll: r.radarRoll ?? null,
+          }
+          const dx = r.deltaX_room != null ? Number.parseFloat(r.deltaX_room) : null
+          const dy = r.deltaY_room != null ? Number.parseFloat(r.deltaY_room) : null
+          if (dx != null && dy != null) {
+            roomConfig.value = { width: dx, depth: dy }
+          }
+        }
+      } catch (error) {
+        console.error("radar ws parse error:", error)
+      }
+    }
+    radarWs.onclose = () => {
+      if (radarInitTimeoutId) {
+        clearTimeout(radarInitTimeoutId)
+        radarInitTimeoutId = null
+      }
+      radarWs = null
+      radarConnected.value = false
+      radarConnecting.value = false
+      resetRadarState()
+    }
+    radarWs.onerror = () => {
+      radarError.value = "雷达连接失败"
+      radarConnected.value = false
+      radarConnecting.value = false
+      resetRadarState()
+    }
+  } catch (error) {
+    console.error("radar ws connect error:", error)
+    radarError.value = "雷达连接异常"
+    radarConnected.value = false
+    radarConnecting.value = false
+  }
+}
+
+const disconnectRadarWs = () => {
+  if (radarInitTimeoutId) {
+    clearTimeout(radarInitTimeoutId)
+    radarInitTimeoutId = null
+  }
+  if (radarWs) {
+    radarWs.close()
+    radarWs = null
+  }
+  radarConnected.value = false
+  radarConnecting.value = false
+  resetRadarState()
+}
+
+const toSha256 = async (text) => {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(text)
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+}
+
+const restartRadarWs = () => {
+  const deviceId = radarLoginForm.deviceId.trim()
+  const token = sessionManager.getToken() || ""
+  localStorage.setItem("radarDeviceId", deviceId)
+  disconnectRadarWs()
+  connectRadarWs(deviceId, token)
+}
+
+const handleLoginAndConnect = async () => {
+  const username = radarLoginForm.username.trim()
+  const password = radarLoginForm.password
+  const deviceId = radarLoginForm.deviceId.trim()
+  if (!username) {
+    radarError.value = "请输入用户名"
+    return
+  }
+  if (!password) {
+    radarError.value = "请输入密码"
+    return
+  }
+  if (!deviceId) {
+    radarError.value = "请输入设备ID"
+    return
+  }
+  loginLoading.value = true
+  radarError.value = ""
+  try {
+    const hashedPassword = await toSha256(password)
+    const res = await fetch(AUTH_API.LOGIN_PASSWORD, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone: username,
+        password: hashedPassword,
+      }),
+    })
+    const data = await res.json()
+    if (data.code === 200) {
+      const user = data.data || {}
+      await sessionManager.setSession({
+        user: {
+          id: user.id,
+          username: user.name,
+          privileges: user.privileges,
+          roles: user.roles || user.role,
+        },
+        sessionId: user.sessionId,
+      })
+      localStorage.setItem("radarLoginUsername", username)
+      restartRadarWs()
+    } else {
+      radarError.value = data.message || "登录失败"
+    }
+  } catch (error) {
+    console.error(error)
+    radarError.value = "登录请求失败"
+  } finally {
+    loginLoading.value = false
+  }
+}
 const getImageUrl =(fullName)=> {
   return new URL(`../../assets/imgs/${fullName}`, import.meta.url).href;
 }
@@ -361,6 +606,11 @@ const clearPlay = () => {
 const timer = ref(null)
 onMounted(() => {
   // startPlay();
+  const hasToken = !!sessionManager.getToken()
+  const hasDeviceId = !!radarLoginForm.deviceId.trim()
+  if (hasToken && hasDeviceId) {
+    connectRadarWs(radarLoginForm.deviceId.trim(), sessionManager.getToken() || "")
+  }
   timer.value = setInterval(() => {
     getData();
   }, 500);
@@ -380,6 +630,7 @@ onUnmounted(() => {
   if (windTimer.value){
     clearInterval(windTimer.value);
   }
+  disconnectRadarWs()
 })
 const WindlessFeeling = ref(false);
 const getData = () => {
@@ -505,6 +756,120 @@ const getPeopleData = (arr) => {
   background-image: url('@img/ic_home_bg.png');
   background-size: 100% 100%;
   background-repeat: no-repeat;
+  position: relative;
+  overflow: hidden;
+}
+
+.radar_settings_btn {
+  position: fixed;
+  left: 2.2%;
+  bottom: 2.2%;
+  z-index: 999;
+  width: 160px;
+  height: 68px;
+  border-radius: 10px;
+  border: 1px solid rgba(194, 249, 255, 0.5);
+  background: rgba(6, 31, 42, 0.75);
+  color: #d9fdff;
+  font-size: 30px;
+  cursor: pointer;
+}
+
+.radar_control_mask {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radar_control_panel {
+  position: relative;
+  width: 860px;
+  padding: 44px 50px 46px;
+  border-radius: 16px;
+  border: 2px solid rgba(1, 255, 255, 0.35);
+  background: rgba(6, 31, 42, 0.92);
+  backdrop-filter: blur(4px);
+}
+
+.control_close_btn {
+  position: absolute;
+  top: 22px;
+  right: 26px;
+  width: 62px;
+  height: 62px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(194, 249, 255, 0.2);
+  color: #d9fdff;
+  font-size: 34px;
+  line-height: 64px;
+  cursor: pointer;
+}
+
+.control_title {
+  font-size: 64px;
+  line-height: 64px;
+  color: #c2f9ff;
+  margin-bottom: 48px;
+  text-align: center;
+}
+
+.control_input {
+  width: 100%;
+  height: 100px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(1, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+  color: #d9fdff;
+  font-size: 34px;
+  padding: 0 14px;
+  outline: none;
+  margin-bottom: 40px;
+}
+
+.control_actions {
+  display: flex;
+  gap: 10px;
+}
+
+.control_btn {
+  flex: 1;
+  height: 100px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(90deg, #00d2ff, #00ffa2);
+  color: #03343d;
+  font-size: 48px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.control_btn.secondary {
+  background: rgba(194, 249, 255, 0.2);
+  color: #d9fdff;
+  border: 1px solid rgba(194, 249, 255, 0.5);
+}
+
+.control_btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.control_status {
+  margin-top: 10px;
+  font-size: 34px;
+  line-height: 54px;
+  color: #9dffd2;
+  margin-top: 20px;
+}
+
+.control_status.error {
+  color: #ff8f8f;
 }
 
 .h-50 {
@@ -587,7 +952,7 @@ const getPeopleData = (arr) => {
 
   .wind_area {
     width: 2037px;
-    margin-top: 19.7%;
+    margin-top: 12%;
     text-align: center;
     position: relative;
     z-index: 100;
@@ -685,10 +1050,10 @@ const getPeopleData = (arr) => {
     }
     .grid_areaPeople{
       position: absolute;
-      height: 430px;
-      width: 2024px;
+      height: 620px;
+      width: 2500px;
       margin-left: 10px;
-      top: 600px;
+      top: 460px;
       transform: translateX(-50%);
       left: 50%;
       z-index: 110;
@@ -696,16 +1061,25 @@ const getPeopleData = (arr) => {
     .grid_area {
       position: absolute;
       //按照宽度1710和角度30度算下来，高应该是493，但是图片高度不够，所以强行加高
-      height: 490px;
-      width: 1900px;
+      height: 2500px;
+      width: 2500px;
       margin-left: -20px;
       top: 600px;
       transform: translateX(-50%);
       left: 50%;
       z-index: 100;
       .gridImg{
-        height: 100%;
+        height: 490px;
         width: 100%;
+      }
+      .radar_skeleton_layer{
+        height:80%;
+        width: 100%;
+        transform: translate(-50%, -50%);
+        position: absolute;
+        top: 0%;
+        left: 50.5%;
+        z-index: 105;
       }
 
       .grid-item {
@@ -786,6 +1160,7 @@ const getPeopleData = (arr) => {
 .page_right {
   width: 1200px;
   height: inherit;
+  position: relative;
 
   .img_title {
     position: fixed;
@@ -921,6 +1296,17 @@ const getPeopleData = (arr) => {
       }
 
     }
+  }
+
+  .radar_point_cloud_panel {
+    position: fixed;
+    top: 37%;
+    width: 1000px;
+    height: 780px;
+    border-radius: 0;
+    overflow: hidden;
+    border: none;
+    background: transparent;
   }
 
   .tips {
