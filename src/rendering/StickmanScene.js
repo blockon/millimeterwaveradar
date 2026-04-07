@@ -1,5 +1,6 @@
 import * as THREE from "three"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
+import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js"
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js"
@@ -12,6 +13,7 @@ import {
   STICKMAN_PART_COLORS,
   JOINT_PART,
 } from "@/constants/cocoKpts"
+import { horizontalDistanceFromOriginXZ, kptJointToSceneXZ } from "@/utils/radarPersonMetrics"
 
 export class StickmanScene {
   constructor(canvas, config = {}) {
@@ -35,6 +37,7 @@ export class StickmanScene {
     this.pointCloudQueue = []
     this.stickmanTemplateModel = null
     this.stickmanMap = new Map()
+    this.labelRenderer = null
     this.skeletonVisible = true
     this.pointCloudVisible = true
     const cachedForward = Number.parseFloat(localStorage.getItem("radarFloorForwardDeg") || "")
@@ -66,6 +69,20 @@ export class StickmanScene {
     this.controls.target.set(0, 1, 0)
     // 通过相机轨道方式整体旋转视角，效果等同鼠标拖拽
     this.rotateViewLikeDrag(45)
+
+    this.labelRenderer = new CSS2DRenderer()
+    this.labelRenderer.setSize(this.config.width, this.config.height)
+    const lrEl = this.labelRenderer.domElement
+    lrEl.style.position = "absolute"
+    lrEl.style.left = "0"
+    lrEl.style.top = "0"
+    lrEl.style.pointerEvents = "none"
+    lrEl.style.overflow = "hidden"
+    const canvasParent = this.canvas.parentElement
+    if (canvasParent) {
+      if (!canvasParent.style.position) canvasParent.style.position = "relative"
+      canvasParent.appendChild(lrEl)
+    }
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.4)
     dirLight.position.set(5, 10, 6)
@@ -200,12 +217,17 @@ export class StickmanScene {
 
   setSkeletonVisible(visible) {
     this.skeletonVisible = !!visible
-    if (!this.skeletonVisible) {
-      this.stickmanMap.forEach((data) => {
-        const obj = data.model ?? data.stickmanLines
-        if (obj) obj.visible = false
-      })
-    }
+    this.stickmanMap.forEach((data) => {
+      const obj = data.model ?? data.stickmanLines
+      if (obj) obj.visible = this.skeletonVisible
+      if (data.distanceLabel) {
+        if (!this.skeletonVisible) {
+          data.distanceLabel.visible = false
+        } else if (data._lastPersonData) {
+          this._syncStickmanDistanceLabel(data, data._lastPersonData)
+        }
+      }
+    })
   }
 
   setPointCloudVisible(visible) {
@@ -262,7 +284,7 @@ export class StickmanScene {
     const finalQuaternion = new THREE.Quaternion()
     finalQuaternion.multiplyQuaternions(quaternionY, quaternionX)
     this.radarGroup.quaternion.copy(finalQuaternion)
-    this.radarGroup.visible = true
+    this.radarGroup.visible = false // 隐藏雷达指示器
     this.radarGroup.updateMatrix()
 
     const nextForwardDeg = 180 - azimuth
@@ -540,6 +562,10 @@ export class StickmanScene {
       m.visible = false
       group.add(m)
     })
+    const { root: labelRoot, cap: labelCap } = this._createStickmanDistanceLabelDOM()
+    const distanceLabel = new CSS2DObject(labelRoot)
+    distanceLabel.visible = false
+    this.scene.add(distanceLabel)
     this.scene.add(group)
     this.stickmanMap.set(id, {
       stickmanLines: group,
@@ -549,6 +575,8 @@ export class StickmanScene {
       headCircle,
       jointPoints: { chest: chestJoints, arms: armJoints, legs: legJoints },
       _jointDummy: new THREE.Object3D(),
+      distanceLabel,
+      distanceLabelTextEl: labelCap,
     })
     return this.stickmanMap.get(id)
   }
@@ -611,9 +639,59 @@ export class StickmanScene {
     return { center, forward }
   }
 
+  _createStickmanDistanceLabelDOM() {
+    const wrap = document.createElement("div")
+    wrap.style.cssText =
+      "display:flex;flex-direction:column;align-items:center;pointer-events:none;user-select:none;position:relative;"
+    const cap = document.createElement("div")
+    cap.style.cssText =
+      "background:#18FE55;color:#090808;padding:4px 6px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.2;white-space:nowrap;"
+    const tail = document.createElement("div")
+    tail.style.cssText =
+      "width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid #18FE55;margin-top:-1px;left:50%;transform:translateX(-50%);position:absolute;"
+    wrap.appendChild(cap)
+    wrap.appendChild(tail)
+    return { root: wrap, cap }
+  }
+
+  _syncStickmanDistanceLabel(data, personData) {
+    const label = data.distanceLabel
+    const cap = data.distanceLabelTextEl
+    if (!label || !cap) return
+    const roomDepth = this.config.roomDepth
+    const n = Math.min(17, personData[0]?.length ?? 0, personData[1]?.length ?? 0, personData[2]?.length ?? 0)
+    if (n < 2) {
+      label.visible = false
+      return
+    }
+    const pose = this.computeHeadPose(personData)
+    if (!pose) {
+      label.visible = false
+      return
+    }
+    const { x, z } = kptJointToSceneXZ(personData, 0, roomDepth)
+    const dx = x - this.floorOrigin.x
+    const dz = z - this.floorOrigin.z
+    const distM = horizontalDistanceFromOriginXZ(dx, dz)
+    cap.textContent = `${distM.toFixed(2)}m`
+    label.position.copy(pose.center).add(new THREE.Vector3(0, 0.32, 0))
+    label.visible = this.skeletonVisible
+  }
+
+  _removeStickmanDistanceLabel(data) {
+    if (!data?.distanceLabel) return
+    this.scene.remove(data.distanceLabel)
+    data.distanceLabel = null
+    data.distanceLabelTextEl = null
+    data._lastPersonData = null
+  }
+
   updateStickmanLinesFromPersonData(data, personData) {
     const n = Math.min(17, personData[0]?.length ?? 0, personData[1]?.length ?? 0, personData[2]?.length ?? 0)
-    if (n < 2) return
+    if (n < 2) {
+      if (data.distanceLabel) data.distanceLabel.visible = false
+      return
+    }
     const positions = data.positions
     for (let e = 0; e < data.edgeCount; e++) {
       const [a, b] = COCO_SKELETON_EDGES[e]
@@ -666,11 +744,15 @@ export class StickmanScene {
         mesh.visible = counts[part] > 0 && this.skeletonVisible
       })
     }
+
+    data._lastPersonData = personData
+    this._syncStickmanDistanceLabel(data, personData)
   }
 
   updateHumanPose(kptsData, trackIds = []) {
     if (!kptsData || kptsData.length === 0) {
       this.stickmanMap.forEach((data) => {
+        this._removeStickmanDistanceLabel(data)
         const obj = data.model ?? data.stickmanLines
         if (obj) {
           this.scene.remove(obj)
@@ -705,6 +787,7 @@ export class StickmanScene {
     toRemove.forEach((id) => {
       const data = this.stickmanMap.get(id)
       if (!data) return
+      this._removeStickmanDistanceLabel(data)
       const obj = data.model ?? data.stickmanLines
       if (obj) {
         this.scene.remove(obj)
@@ -717,6 +800,7 @@ export class StickmanScene {
   animate() {
     this.controls.update()
     this.renderer.render(this.scene, this.camera)
+    if (this.labelRenderer) this.labelRenderer.render(this.scene, this.camera)
   }
 
   rotateViewLikeDrag(deg = 0) {
@@ -734,6 +818,7 @@ export class StickmanScene {
     this.camera.aspect = width / height
     this.camera.updateProjectionMatrix()
     this.renderer.setSize(width, height)
+    if (this.labelRenderer) this.labelRenderer.setSize(width, height)
   }
 
   _disposeObject(obj) {
@@ -759,6 +844,10 @@ export class StickmanScene {
     }
     this.controls?.dispose()
     this.renderer.dispose()
+    if (this.labelRenderer) {
+      this.labelRenderer.domElement?.remove()
+      this.labelRenderer = null
+    }
     this.room = null
     this.radarGroup = null
     this.pointCloudPoints = null

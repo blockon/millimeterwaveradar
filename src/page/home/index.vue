@@ -22,11 +22,11 @@
         <input v-model.trim="radarLoginForm.deviceId" class="control_input" placeholder="设备ID" />
         <div class="control_actions">
           <button class="control_btn" :disabled="loginLoading || radarConnecting" @click="handleLoginAndConnect">
-            {{ loginLoading ? "登录中..." : radarConnecting ? "连接中..." : "登录并展示" }}
+            {{ loginLoading ? '登录中...' : radarConnecting ? '连接中...' : '登录并展示' }}
           </button>
         </div>
         <div class="control_status" :class="{ error: radarError }">
-          {{ radarError || (radarConnected ? "已连接，数据实时展示中" : "未连接") }}
+          {{ radarError || (radarConnected ? '已连接，数据实时展示中' : '未连接') }}
         </div>
       </div>
     </div>
@@ -34,10 +34,14 @@
     <div class="page_left center">
       <!-- 风速 -->
       <div class="wind_speed_num">
-        <img class="running_anticlockwise" :style="`animation-duration:${Math.abs(6 - devData.speed)}s`" :src="powerState" :class="{'noScan':devData.power == 0}" />
+        <img
+          class="running_anticlockwise"
+          :style="`animation-duration:${Math.abs(6 - devData.speed)}s`"
+          :src="powerState"
+          :class="{ noScan: devData.power == 0 }" />
         <div class="powertext center">
           <div class="wind_speed_str">{{ devData.power ? '开机' : '关机' }}</div>
-          <div class="wind_speed_hint" v-if="devData.power">{{devData.set_temper/10}}℃ | {{windSpeedArr[devData.speed]}}</div>
+          <div class="wind_speed_hint" v-if="devData.power">{{ devData.set_temper / 10 }}℃ | {{ windSpeedArr[devData.speed] }}</div>
         </div>
       </div>
 
@@ -47,12 +51,11 @@
         <div v-if="devData.power">
           <img :src="windModeImgLeft" class="windAreaQuanYuBottom" />
           <img :src="windModeImgRight" class="windAreaQuanYuBottom" />
-          <div class="windModeText">{{devData.swing_mode > 0 ? windModeArr[devData.swing_mode-1]:''}}</div>
-          <img src="@img/windModeBg.png" class="windModeBgImg"/>
+          <div class="windModeText">{{ devData.swing_mode > 0 ? windModeArr[devData.swing_mode - 1] : '' }}</div>
+          <img src="@img/windModeBg.png" class="windModeBgImg" />
         </div>
         <!-- 网格区域 -->
         <div class="grid_area">
-          <!-- <img :src="gridImgSrc" class="gridImg"/> -->
           <div class="radar_skeleton_layer">
             <ThreeStickmanView
               :kpts-data="latestKpts"
@@ -62,32 +65,10 @@
               :radar-params="radarParams"
               :show-skeleton="true"
               :show-point-cloud="false"
-              skeleton-mode="stickman"
-            />
-          </div>
-        </div>
-        <div class="grid_areaPeople">
-          <div class="people_grid_area" v-if="devData.power" v-for="item in devData.data_array" :key="item.id"
-               :style="`left:${getPeopleLeft(item)};top:${getPeopleTop(item)};z-index:${110 + item.distance}`">
-            <img :src="getHeadImg(item)" class="flagBgArea">
-            <div class="peopleFlag">{{item.distance/100}}m</div>
-            <img src="@img/people.png" class="peopleImg"/>
+              skeleton-mode="stickman" />
           </div>
         </div>
       </div>
-
-      <!-- 扫风动画 -->
-<!--      <div class="wind_svga">-->
-<!--        <div id="svgaUp" class="w-full h-full"></div>-->
-<!--        <div id="svgaDown" class="w-full h-50"></div>-->
-<!--      </div>-->
-
-      <!-- 摆风模式 -->
-<!--      <div class="wind_mode_area">-->
-<!--        <div class="wind_mode_str">「 {{ WindlessFeeling ? '无风感' : '普通' }} 」</div>-->
-<!--        <div class="wind_mode_hint">模式</div>-->
-<!--      </div>-->
-
     </div>
     <!-- 右边-人体状态感知参数区域 -->
     <div class="page_right center">
@@ -95,13 +76,13 @@
       <!-- 热源数量 -->
       <div class="heat_num_area">
         <img class="running_clockwise" :src="peopleBg" />
-        <img class="singleScan" :class="{'noScan':!devData.power}" :src="peopleScan" />
-        <div class="heat_num_str" :class="{'powerOffState':!devData.power}">
-          {{!devData.power ? '无人' : devData.data_array.length > 0 ? devData.data_array.length == 1 ? '单人' : '双人' : '无人' }}</div>
-<!--        <div class="heat_num_hint" v-if="devData.power && devData.data_array.length > 0">-->
-<!--          当前{{devData.data_array.length}}人<em v-if="devData.data_array.length > 1">，温度降低1度</em></div>-->
+        <img class="singleScan" :class="{ noScan: !rightPanelVisualActive }" :src="peopleScan" />
+        <div class="heat_num_str" :class="{ powerOffState: !rightPanelVisualActive }">
+          {{ rightPanelPersonLabel }}
+        </div>
       </div>
       <div class="radar_point_cloud_panel">
+        <div class="dev"></div>
         <ThreeStickmanView
           :kpts-data="latestKpts"
           :track-ids="radarTrackIds"
@@ -110,41 +91,52 @@
           :radar-params="radarParams"
           :show-skeleton="false"
           :show-point-cloud="true"
-          skeleton-mode="stickman"
-        />
+          skeleton-mode="stickman" />
       </div>
       <!-- 未检测到人体 -->
-      <div v-if="devData.data_array.length == 0 || !devData.power" class="no_body">区域内暂未检测到人体</div>
-      <!-- 检测到人体 -->
-      <div class="heat_list" v-else>
-        <div class="heat_item mid" v-for="(item, index) in devData.data_array.length > 6 ?
-        devData.data_array.slice(0,6) : devData.data_array"
-             :key="index">
-          <div class="itemLeft">{{ item.id >= 9 ? item.id : '0'+(item.id) }}</div>
+      <div v-if="!hasRightPanelPeople" class="no_body">区域内暂未检测到人体</div>
+      <!-- 雷达优先：有雷达人数时展示最近 3 人 -->
+      <div v-else-if="radarConnected && radarPersonCount > 0" class="heat_list">
+        <div class="heat_item mid" v-for="(item, index) in nearestRadarTargets" :key="`${item.trackId}-${index}`">
+          <div class="itemLeft">{{ formatRadarRankByIndex(index) }}</div>
           <img src="@img/ic_map.png" class="itemMap" />
           <div class="itemAngel">{{ item.angel }}°</div>
           <div class="item_line"></div>
-          <div style="margin-left: 50px;" class="itemDistance">{{ item.distance / 100 }}m</div>
+          <div style="margin-left: 50px" class="itemDistance">{{ formatRadarRowDistance(item) }}</div>
         </div>
       </div>
-      <div class="tips">温馨提示：本地热源最多检测2个</div>
+      <!-- 空调侧热源列表（无雷达人数时） -->
+      <div v-else-if="devData.power && devData.data_array.length > 0" class="heat_list">
+        <div
+          class="heat_item mid"
+          v-for="(item, index) in devData.data_array.length > 6 ? devData.data_array.slice(0, 6) : devData.data_array"
+          :key="index">
+          <div class="itemLeft">{{ item.id >= 9 ? item.id : '0' + item.id }}</div>
+          <img src="@img/ic_map.png" class="itemMap" />
+          <div class="itemAngel">{{ item.angel }}°</div>
+          <div class="item_line"></div>
+          <div style="margin-left: 50px" class="itemDistance">{{ item.distance / 100 }}m</div>
+        </div>
+      </div>
+      <div class="tips">温馨提示：最多显示3个人</div>
     </div>
   </div>
 </template>
 
 <script setup>
 import SVGA from 'svgaplayerweb'
-import {P_8009369} from '@/utils/analysis.js'
-import ThreeStickmanView from "@/components/ThreeStickmanView.vue"
-import { AUTH_API, RADAR_WS_URL } from "@/config/radarApi"
-import sessionManager from "@/utils/login/sessionManager"
-import { binaryToString } from "@/utils/binaryToString"
-import { parseCompressedPcloud } from "@/utils/parse_compressed_pcloud"
+import { P_8009369 } from '@/utils/analysis.js'
+import ThreeStickmanView from '@/components/ThreeStickmanView.vue'
+import { AUTH_API, RADAR_WS_URL } from '@/config/radarApi'
+import sessionManager from '@/utils/login/sessionManager'
+import { binaryToString } from '@/utils/binaryToString'
+import { parseCompressedPcloud } from '@/utils/parse_compressed_pcloud'
+import { buildNearestRadarPersonRows, getFloorOriginXZFromRadarParams } from '@/utils/radarPersonMetrics'
 
 let isReverse = {}
-let player = {};
-let parser = {};
-let isLoadFile = {};
+let player = {}
+let parser = {}
+let isLoadFile = {}
 let range = {}
 const radarTrackIds = ref([])
 const latestKpts = ref([])
@@ -153,13 +145,13 @@ const radarParams = ref({})
 const roomConfig = ref({ width: 5, depth: 5 })
 const showLoginPanel = ref(false)
 const radarLoginForm = reactive({
-  username: localStorage.getItem("radarLoginUsername") || "",
-  password: "",
-  deviceId: (localStorage.getItem("radarDeviceId") || import.meta.env.VITE_RADAR_DEVICE_ID || "").trim(),
+  username: localStorage.getItem('radarLoginUsername') || '',
+  password: '',
+  deviceId: (localStorage.getItem('radarDeviceId') || import.meta.env.VITE_RADAR_DEVICE_ID || '').trim(),
 })
 const radarConnected = ref(false)
 const radarConnecting = ref(false)
-const radarError = ref("")
+const radarError = ref('')
 const loginLoading = ref(false)
 let radarWs = null
 let radarInitTimeoutId = null
@@ -172,13 +164,13 @@ const resetRadarState = () => {
   roomConfig.value = { width: 5, depth: 5 }
 }
 
-const connectRadarWs = (deviceId, token = "") => {
+const connectRadarWs = (deviceId, token = '') => {
   if (!deviceId) {
-    radarError.value = "请输入设备ID"
+    radarError.value = '请输入设备ID'
     return
   }
   radarConnecting.value = true
-  radarError.value = ""
+  radarError.value = ''
   try {
     radarWs = new WebSocket(RADAR_WS_URL)
     radarWs.onopen = () => {
@@ -186,15 +178,15 @@ const connectRadarWs = (deviceId, token = "") => {
       radarConnecting.value = false
       const initData = {
         deviceID: deviceId,
-        type: "1",
+        type: '1',
         session: Date.now().toString(),
-        content: "start",
-        startTime: "",
-        endTime: "",
-        deviceID1: "",
-        deviceID2: "",
-        scene: "",
-        multiradar: "",
+        content: 'start',
+        startTime: '',
+        endTime: '',
+        deviceID1: '',
+        deviceID2: '',
+        scene: '',
+        multiradar: '',
         token,
       }
       radarInitTimeoutId = setTimeout(() => {
@@ -207,11 +199,11 @@ const connectRadarWs = (deviceId, token = "") => {
     radarWs.onmessage = async (event) => {
       try {
         const raw = event.data
-        const str = typeof raw === "string" ? raw : await binaryToString(raw)
+        const str = typeof raw === 'string' ? raw : await binaryToString(raw)
         const data = JSON.parse(str)
         if (Array.isArray(data.track_id)) radarTrackIds.value = data.track_id
         if (Array.isArray(data.kpts)) latestKpts.value = data.kpts
-        if (data.rawpc != null && data.rawpc !== "") {
+        if (data.rawpc != null && data.rawpc !== '') {
           latestPointCloud.value = parseCompressedPcloud(data.rawpc, 5)
         } else {
           latestPointCloud.value = []
@@ -233,7 +225,7 @@ const connectRadarWs = (deviceId, token = "") => {
           }
         }
       } catch (error) {
-        console.error("radar ws parse error:", error)
+        console.error('radar ws parse error:', error)
       }
     }
     radarWs.onclose = () => {
@@ -247,14 +239,14 @@ const connectRadarWs = (deviceId, token = "") => {
       resetRadarState()
     }
     radarWs.onerror = () => {
-      radarError.value = "雷达连接失败"
+      radarError.value = '雷达连接失败'
       radarConnected.value = false
       radarConnecting.value = false
       resetRadarState()
     }
   } catch (error) {
-    console.error("radar ws connect error:", error)
-    radarError.value = "雷达连接异常"
+    console.error('radar ws connect error:', error)
+    radarError.value = '雷达连接异常'
     radarConnected.value = false
     radarConnecting.value = false
   }
@@ -277,15 +269,15 @@ const disconnectRadarWs = () => {
 const toSha256 = async (text) => {
   const encoder = new TextEncoder()
   const data = encoder.encode(text)
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 const restartRadarWs = () => {
   const deviceId = radarLoginForm.deviceId.trim()
-  const token = sessionManager.getToken() || ""
-  localStorage.setItem("radarDeviceId", deviceId)
+  const token = sessionManager.getToken() || ''
+  localStorage.setItem('radarDeviceId', deviceId)
   disconnectRadarWs()
   connectRadarWs(deviceId, token)
 }
@@ -295,24 +287,24 @@ const handleLoginAndConnect = async () => {
   const password = radarLoginForm.password
   const deviceId = radarLoginForm.deviceId.trim()
   if (!username) {
-    radarError.value = "请输入用户名"
+    radarError.value = '请输入用户名'
     return
   }
   if (!password) {
-    radarError.value = "请输入密码"
+    radarError.value = '请输入密码'
     return
   }
   if (!deviceId) {
-    radarError.value = "请输入设备ID"
+    radarError.value = '请输入设备ID'
     return
   }
   loginLoading.value = true
-  radarError.value = ""
+  radarError.value = ''
   try {
     const hashedPassword = await toSha256(password)
     const res = await fetch(AUTH_API.LOGIN_PASSWORD, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         phone: username,
         password: hashedPassword,
@@ -330,26 +322,26 @@ const handleLoginAndConnect = async () => {
         },
         sessionId: user.sessionId,
       })
-      localStorage.setItem("radarLoginUsername", username)
+      localStorage.setItem('radarLoginUsername', username)
       restartRadarWs()
     } else {
-      radarError.value = data.message || "登录失败"
+      radarError.value = data.message || '登录失败'
     }
   } catch (error) {
     console.error(error)
-    radarError.value = "登录请求失败"
+    radarError.value = '登录请求失败'
   } finally {
     loginLoading.value = false
   }
 }
-const getImageUrl =(fullName)=> {
-  return new URL(`../../assets/imgs/${fullName}`, import.meta.url).href;
+const getImageUrl = (fullName) => {
+  return new URL(`../../assets/imgs/${fullName}`, import.meta.url).href
 }
 const excutePlayer = (playObj, item) => {
   // 执行动画
   if (devData.value.swing_mode != 0) {
     // 如果不为扫风，svga动画调换到指定角度
-    const _a = devData.value.swing_mode == 2 ? transfromAngel(item.angel) : item.angel;
+    const _a = devData.value.swing_mode == 2 ? transfromAngel(item.angel) : item.angel
     let frameNum = Math.ceil((_a - 50) / 2) //风向（区域），0：左，1：中，2：右
     playObj.stepToFrame(frameNum, false)
   } else {
@@ -357,42 +349,43 @@ const excutePlayer = (playObj, item) => {
     range[item.swing_leaf].length = item.wind_area == 3 ? 49 : 14
     playObj.startAnimationWithRange(range[item.swing_leaf], isReverse[item.swing_leaf])
   }
-};
+}
 
 const playSvga = () => {
-
-  sgvaObj.forEach(item => {
-    player[item.swing_leaf] = player[item.swing_leaf] || new SVGA.Player('#' + item.swing_leaf);
+  sgvaObj.forEach((item) => {
+    player[item.swing_leaf] = player[item.swing_leaf] || new SVGA.Player('#' + item.swing_leaf)
     parser[item.swing_leaf] = parser[item.swing_leaf] || new SVGA.Parser()
     range[item.swing_leaf] = { location: 0, length: 42 }
-    player[item.swing_leaf].loops = 1;
+    player[item.swing_leaf].loops = 1
     if (isLoadFile[item.swing_leaf]) {
       // 若已加载文件，则直接执行
       excutePlayer(player[item.swing_leaf], item)
     } else {
       parser[item.swing_leaf].load(item.url, (videoItem) => {
         player[item.swing_leaf].setVideoItem(videoItem)
-        isLoadFile[item.swing_leaf] = true; // 是否加载svga文件
+        isLoadFile[item.swing_leaf] = true // 是否加载svga文件
         excutePlayer(player[item.swing_leaf], item)
       })
     }
 
-    player[item.swing_leaf].onFinished(() => { //动画停止播放时回调
-      isReverse[item.swing_leaf] = !isReverse[item.swing_leaf];
-      player[item.swing_leaf].clear();
+    player[item.swing_leaf].onFinished(() => {
+      //动画停止播放时回调
+      isReverse[item.swing_leaf] = !isReverse[item.swing_leaf]
+      player[item.swing_leaf].clear()
       setTimeout(() => {
         player[item.swing_leaf].startAnimationWithRange(range[item.swing_leaf], isReverse[item.swing_leaf])
-      }, 10);
+      }, 10)
     })
-    player[item.swing_leaf].onFrame((number) => { //动画播放至某帧后回调
+    player[item.swing_leaf].onFrame((number) => {
+      //动画播放至某帧后回调
       // console.log('--onFrame--' + number)
     })
-    player[item.swing_leaf].onPercentage((number) => { //动画播放至某进度后回调
+    player[item.swing_leaf].onPercentage((number) => {
+      //动画播放至某进度后回调
       // console.log('--onPercentage--' + number)
     })
   })
 }
-
 
 const windModeArr = ['风随人动', '风避人吹', '人近风柔']
 const windSpeedArr = ['自动风', '微风', '低风', '中风', '高风', '强劲风']
@@ -400,26 +393,25 @@ const windSpeedArr = ['自动风', '微风', '低风', '中风', '高风', '强�
 const transfromAngel = (angle) => {
   if (angle <= 90) {
     angle = angle + 45
+  } else if (angle > 90 && angle <= 135) {
+    angle = angle - 45
   }
-  else if (angle > 90 && angle <= 135) {
-    angle = angle - 45;
-  }
-  return angle; //空调摆叶摆动位置
+  return angle //空调摆叶摆动位置
 }
 let sgvaObj = [
   {
     swing_leaf: 'svgaUp',
-    url: './svga/up_single.svga'
+    url: './svga/up_single.svga',
   },
   {
     swing_leaf: 'svgaDown',
-    url: './svga/down_single.svga'
-  }
-];
+    url: './svga/down_single.svga',
+  },
+]
 let devData = ref({
-  "json_seq": 2,  //数据包编号，0~65535
-  "id_num": 2,  //检测到的人数，0-3人
-  "data_array": [
+  json_seq: 2, //数据包编号，0~65535
+  id_num: 2, //检测到的人数，0-3人
+  data_array: [
     // {
     //   "id": 0,
     //   "angel": 90,   //角度，30-150°
@@ -431,43 +423,90 @@ let devData = ref({
     //   "distance": 250,   //距离，单位厘米，0-500cm
     // }
   ],
-  "speed": 4,   //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
+  speed: 4, //风速，0:自动风，1：微风，2：低风，3中风，4：高风，5：强劲风
   // 扫风时绘制动画 风随人动和风逆人动动画停止，只绘制角度
-  "swing_mode":0, //扫风方式，1：风随人动，2：风避人吹，3:人近风柔
-  "sleep_mode": 1, //睡眠模式，0：关闭，1：打开
-  "left_swing_area": 0, //上(左)摆叶摆风区域，0--100度   0度是中间 50度斜前方 左边是100，只有这三种情况
-  "right_swing_area": 0, //下（右）摆叶摆风区域，0--100度   0度是中间，50度斜前方 右边是100
-  "power": 1,
-  "set_temper":263
-});
+  swing_mode: 0, //扫风方式，1：风随人动，2：风避人吹，3:人近风柔
+  sleep_mode: 1, //睡眠模式，0：关闭，1：打开
+  left_swing_area: 0, //上(左)摆叶摆风区域，0--100度   0度是中间 50度斜前方 左边是100，只有这三种情况
+  right_swing_area: 0, //下（右）摆叶摆风区域，0--100度   0度是中间，50度斜前方 右边是100
+  power: 1,
+  set_temper: 263,
+})
+
+const radarPersonCount = computed(() => {
+  const t = radarTrackIds.value?.length ?? 0
+  if (t > 0) return t
+  return latestKpts.value?.length ?? 0
+})
+
+const radarFloorOriginXZ = computed(() => getFloorOriginXZFromRadarParams(radarParams.value, roomConfig.value?.depth ?? 5))
+
+const nearestRadarTargets = computed(() => {
+  const depth = roomConfig.value?.depth ?? 5
+  return buildNearestRadarPersonRows(latestKpts.value, radarTrackIds.value, depth, 3, radarFloorOriginXZ.value)
+})
+
+const rightPanelPersonLabel = computed(() => {
+  if (radarConnected.value) {
+    const d = Math.min(radarPersonCount.value, 3)
+    if (d <= 0) return '无人'
+    if (d === 1) return '单人'
+    if (d === 2) return '双人'
+    return '三人'
+  }
+  if (!devData.value.power) return '无人'
+  const m = devData.value.data_array?.length ?? 0
+  const d = Math.min(m, 3)
+  if (d <= 0) return '无人'
+  if (d === 1) return '单人'
+  if (d === 2) return '双人'
+  return '三人'
+})
+
+const hasRightPanelPeople = computed(() => {
+  if (radarConnected.value && radarPersonCount.value > 0) return true
+  return !!(devData.value.power && (devData.value.data_array?.length ?? 0) > 0)
+})
+
+const rightPanelVisualActive = computed(() => {
+  return !!(devData.value.power || (radarConnected.value && radarPersonCount.value > 0))
+})
+
+const formatRadarRowDistance = (row) => {
+  if (!row || typeof row.distanceM !== 'number' || !Number.isFinite(row.distanceM)) return '—'
+  return `${row.distanceM.toFixed(2)}m`
+}
+
+/** 右侧雷达列表按距离升序，第 1 条为 01（最近），第 3 条为 03（最远） */
+const formatRadarRankByIndex = (index) => String(index + 1).padStart(2, '0')
+
 const windTimer = ref(null)
 const startBaiFeng = () => {
-  if (!windTimer.value){
+  if (!windTimer.value) {
     let i = 1
     let isMax = false
     windModeImg.value = getImageUrl(`fengYe1.png`)
     windTimer.value = setInterval(() => {
-      if (!isMax){//左到右
+      if (!isMax) {
+        //左到右
         i++
-        if (i >= 5)
-          isMax = true
-      }else {
+        if (i >= 5) isMax = true
+      } else {
         i--
-        if (i <= 1)
-          isMax = false
+        if (i <= 1) isMax = false
       }
       windModeImg.value = getImageUrl(`fengYe${i}.png`)
-    },1000)
+    }, 1000)
   }
 }
 const clearWindTimer = () => {
-  if (windTimer.value){
+  if (windTimer.value) {
     clearInterval(windTimer.value)
     windTimer.value = null
   }
 }
-const windModeImgLeft = ref("")
-const windModeImgRight = ref("")
+const windModeImgLeft = ref('')
+const windModeImgRight = ref('')
 const showfengYe = () => {
   let imgNameLeft = ''
   let imgNameRight = ''
@@ -475,42 +514,47 @@ const showfengYe = () => {
   let imgNameRightLast = devData.value.speed > 2 ? 'Strong.png' : 'Weak.png'
   //left_swing_area：左边摆叶（0--100） right_swing_area：右边摆叶（0--100）
   //devData.value.swing_mode == 0说明当前没有运行风随人动那些模式，不显示摆叶
-  if (devData.value.swing_mode == 0){
+  if (devData.value.swing_mode == 0) {
     imgNameLeft = ''
-    imgNameRight= ''
-  } else if (devData.value.right_swing_area == 100 && devData.value.left_swing_area == 100){
-    imgNameLeft = 'L_L'//最大角度
-    imgNameRight = 'R_R'//最大角度
-  } else if (devData.value.right_swing_area <= 50 && devData.value.left_swing_area <= 50){
-    imgNameLeft = 'L_M'//中间角度
-    imgNameRight = 'R_M'//中间角度
-  }else if (devData.value.right_swing_area < 50 && devData.value.left_swing_area > 50 ){//整体往左吹
+    imgNameRight = ''
+  } else if (devData.value.right_swing_area == 100 && devData.value.left_swing_area == 100) {
+    imgNameLeft = 'L_L' //最大角度
+    imgNameRight = 'R_R' //最大角度
+  } else if (devData.value.right_swing_area <= 50 && devData.value.left_swing_area <= 50) {
+    imgNameLeft = 'L_M' //中间角度
+    imgNameRight = 'R_M' //中间角度
+  } else if (devData.value.right_swing_area < 50 && devData.value.left_swing_area > 50) {
+    //整体往左吹
     imgNameLeft = 'L_L'
     imgNameRight = 'R_L'
-  }else if (devData.value.right_swing_area > 50 && devData.value.left_swing_area < 50){//整体往右吹
+  } else if (devData.value.right_swing_area > 50 && devData.value.left_swing_area < 50) {
+    //整体往右吹
     imgNameLeft = 'L_R'
     imgNameRight = 'R_R'
   }
   // 风避人吹时
-  if (devData.value.swing_mode == 2 ){
-    if (devData.value.data_array.length == 2){//双人场景 1、风避人吹时都是短风+弱风
+  if (devData.value.swing_mode == 2) {
+    if (devData.value.data_array.length == 2) {
+      //双人场景 1、风避人吹时都是短风+弱风
       imgNameLeftLast = 'Weak.png'
       imgNameRightLast = 'Weak.png'
-      if (devData.value.right_swing_area == 100 && devData.value.left_swing_area == 100){
-        imgNameLeft = 'L_LSmall'//最大角度,但是风只有一半
-        imgNameRight = 'R_RSmall'//最大角度,但是风只有一半
+      if (devData.value.right_swing_area == 100 && devData.value.left_swing_area == 100) {
+        imgNameLeft = 'L_LSmall' //最大角度,但是风只有一半
+        imgNameRight = 'R_RSmall' //最大角度,但是风只有一半
       }
-    }else if (devData.value.data_array.length == 1){
+    } else if (devData.value.data_array.length == 1) {
       //单人场景1、风避人吹时人在左或右，一个强风一个弱风，中间的时候两边角度最大两边都是弱风+短风
-      if (devData.value.right_swing_area < 50 && devData.value.left_swing_area > 50 ){//整体往左吹
+      if (devData.value.right_swing_area < 50 && devData.value.left_swing_area > 50) {
+        //整体往左吹
         imgNameLeftLast = 'Strong.png'
         imgNameRightLast = 'Weak.png'
-      }else if (devData.value.right_swing_area > 50 && devData.value.left_swing_area < 50){//整体往右吹
+      } else if (devData.value.right_swing_area > 50 && devData.value.left_swing_area < 50) {
+        //整体往右吹
         imgNameLeftLast = 'Weak.png'
         imgNameRightLast = 'Strong.png'
-      }else if (devData.value.right_swing_area == 100 && devData.value.left_swing_area == 100){
-        imgNameLeft = 'L_LSmall'//最大角度,但是风只有一半
-        imgNameRight = 'R_RSmall'//最大角度,但是风只有一半
+      } else if (devData.value.right_swing_area == 100 && devData.value.left_swing_area == 100) {
+        imgNameLeft = 'L_LSmall' //最大角度,但是风只有一半
+        imgNameRight = 'R_RSmall' //最大角度,但是风只有一半
         imgNameLeftLast = 'Weak.png'
         imgNameRightLast = 'Weak.png'
       }
@@ -518,7 +562,7 @@ const showfengYe = () => {
   }
   windModeImgLeft.value = ''
   windModeImgRight.value = ''
-  if (imgNameLeft.length > 0 && imgNameRight.length > 0){
+  if (imgNameLeft.length > 0 && imgNameRight.length > 0) {
     windModeImgLeft.value = getImageUrl(`${imgNameLeft}${imgNameLeftLast}`)
     windModeImgRight.value = getImageUrl(`${imgNameRight}${imgNameRightLast}`)
   }
@@ -527,37 +571,43 @@ const showfengYe = () => {
 const windAreaStyle = computed(() => {
   if (devData.value.swing_mode == 0) {
     let angle = 0
-    if (devData.value.left_swing_area < 90){
+    if (devData.value.left_swing_area < 90) {
       angle = 30 - (devData.value.left_swing_area - 30) / 2
-    }else {
+    } else {
       angle = -(devData.value.left_swing_area - 90) / 2
     }
     return {
-      transform: `translateX(-50%) rotate(${angle}deg)`,//rotate(30deg)
+      transform: `translateX(-50%) rotate(${angle}deg)`, //rotate(30deg)
       transformOrigin: 'center top', // 设置旋转原点为上边中心点
-      transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
-    };
+      transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+    }
   }
   return {
     transform: 'translateX(-50%)',
     transformOrigin: 'center center', // 保持默认中心点旋转
   }
 })
-const peopleBg = computed(()=>{
-  return !devData.value.power ? getImageUrl('noPeople.png') : devData.value.data_array.length > 1 ?
-      getImageUrl('morePeople.png') : getImageUrl('ic_singlePeople.png')
+const peopleBg = computed(() => {
+  return !devData.value.power
+    ? getImageUrl('noPeople.png')
+    : devData.value.data_array.length > 1
+      ? getImageUrl('morePeople.png')
+      : getImageUrl('ic_singlePeople.png')
 })
-const peopleScan = computed(()=>{
-  return !devData.value.power ? getImageUrl('noPeopleScan.png') : devData.value.data_array.length > 1 ?
-      getImageUrl('morePeopleScan.png') : getImageUrl('singleScan.png')
+const peopleScan = computed(() => {
+  return !devData.value.power
+    ? getImageUrl('noPeopleScan.png')
+    : devData.value.data_array.length > 1
+      ? getImageUrl('morePeopleScan.png')
+      : getImageUrl('singleScan.png')
 })
-const devImg = computed(()=>{
+const devImg = computed(() => {
   return devData.value.power == 1 ? getImageUrl('GHS_open.png') : getImageUrl('GHS_close.png')
 })
-const powerState = computed(()=>{
+const powerState = computed(() => {
   return devData.value.power == 1 ? getImageUrl('ic_wind_speed_open.png') : getImageUrl('ic_wind_speed_close.png')
 })
-const gridImgSrc = computed(()=>{
+const gridImgSrc = computed(() => {
   return devData.value.power == 1 ? getImageUrl('grid_open_new120.png') : getImageUrl('grid_close_new120.png')
 })
 const getHeadImg = (item) => {
@@ -573,47 +623,45 @@ const heightUI = (493 / 1150).toFixed(2)
 const getPeopleLeft = (item) => {
   //实际距离按照比例对应到UI上
   const distanceUI = item.distance * uiBiLi
-//实际距离
-  const left = item.angel == 90 ? distanceUI : distanceUI * Math.cos((item.angel > 90 ? 180 - item.angel :
-          item.angel) * Math.PI / 180)
+  //实际距离
+  const left = item.angel == 90 ? distanceUI : distanceUI * Math.cos(((item.angel > 90 ? 180 - item.angel : item.angel) * Math.PI) / 180)
   // console.log('left',item.id,left)
   let leftUi = 0
   leftUi = item.angel > 90 ? 1012 + left : item.angel == 90 ? 1012 : 1012 - left
   // 将px单位转换为vw单位 (1vw = 38.4px，基于3840px的设计稿)
   const leftVw = ((leftUi - 70) / 38.4).toFixed(2)
-  return leftVw + "vw" //转化UI的top距离
+  return leftVw + 'vw' //转化UI的top距离
 }
 const getPeopleTop = (item) => {
   const distanceUI = item.distance * uiBiLi * heightUI
   //实际距离
-  let top = item.angel == 90 ? distanceUI : distanceUI * Math.sin((item.angel > 90 ? 180 - item.angel :
-      item.angel) * Math.PI / 180)
+  let top = item.angel == 90 ? distanceUI : distanceUI * Math.sin(((item.angel > 90 ? 180 - item.angel : item.angel) * Math.PI) / 180)
   // console.log('top',item.id,top)
   const topVw = ((top - 318) / 38.4).toFixed(2)
-  return topVw + "vw" //转化UI的top距离
+  return topVw + 'vw' //转化UI的top距离
 }
 const startPlay = () => {
-  sgvaObj[0].wind_area = devData.value.left_swing_area;
-  sgvaObj[1].wind_area = devData.value.right_swing_area;
+  sgvaObj[0].wind_area = devData.value.left_swing_area
+  sgvaObj[1].wind_area = devData.value.right_swing_area
   playSvga()
 }
 // 停止播放
 const clearPlay = () => {
   for (let i in player) {
-    player[i].stopAnimation();
+    player[i].stopAnimation()
   }
-};
+}
 const timer = ref(null)
 onMounted(() => {
   // startPlay();
   const hasToken = !!sessionManager.getToken()
   const hasDeviceId = !!radarLoginForm.deviceId.trim()
   if (hasToken && hasDeviceId) {
-    connectRadarWs(radarLoginForm.deviceId.trim(), sessionManager.getToken() || "")
+    connectRadarWs(radarLoginForm.deviceId.trim(), sessionManager.getToken() || '')
   }
   timer.value = setInterval(() => {
-    getData();
-  }, 500);
+    getData()
+  }, 500)
   // getData();
   // showfengYe()
   // setTimeout(() => {
@@ -626,13 +674,13 @@ onMounted(() => {
   // },1500)
 })
 onUnmounted(() => {
-  clearInterval(timer.value);
-  if (windTimer.value){
-    clearInterval(windTimer.value);
+  clearInterval(timer.value)
+  if (windTimer.value) {
+    clearInterval(windTimer.value)
   }
   disconnectRadarWs()
 })
-const WindlessFeeling = ref(false);
+const WindlessFeeling = ref(false)
 const getData = () => {
   // const data = "55AAAF0117001A03000A0147010600000000000000060002E50201060002000002060002E50200070001000107000100020700010006070001000707000100080700023CDC09070001000A070001000B070001000109000200000209000100030900020000060900020000070900020000080900025C030B09000200000C09000200000D090002F4010E09000200000F09000200001009000200001109000200001209000200001F09000200006208"
   // const data1 = "55AAC802170000010001010101000100020100018C03010001030401000132050100010006010001000002000104010200010302020001000302000100040200010005020001000602000100070200010008020002000009020001000A02000100010300010009030001000A03000200000B030001000D03000238380E03000100100300023838110300010013030002646414030001001603000264641703000100180300010019030001001C030001001E03000238381F030001002103000238380204000108070400010108040001010E04000401010100000500020000020500010103050004000000000405000400000000050500090016000700000000000705000100080500040000000009050004000000000A050001000B050004000000000C050001080D050001000F050001001005000100110500010012050001001305000100AE09"
@@ -643,27 +691,29 @@ const getData = () => {
   // return
   http({
     method: 'POST',
-    url: "/api/getData"
-  }).then(data => {
-    if (!data) return;
-    console.log(data, '接口返回数据');
-    dealData(data.data)
-    return;
-    devData.value.right_swing_area = data.right_swing_area;
-    devData.value.left_swing_area = data.left_swing_area;
-    // devData.value.data_array = data.data_array;
-    devData.value.speed = data.speed;
-    devData.value.swing_mode = data.swing_mode;
-    devData.value.power = data.power;
-    devData.value.set_temper = data.set_temper;
-    devData.value.id_num = data.id_num;
-    getPeopleData(data.data_array)//处理人形站位
-    showfengYe()
-  }).catch(e => {
-    // console.log(e, '接口异常');
+    url: '/api/getData',
   })
+    .then((data) => {
+      if (!data) return
+      console.log(data, '接口返回数据')
+      dealData(data.data)
+      return
+      devData.value.right_swing_area = data.right_swing_area
+      devData.value.left_swing_area = data.left_swing_area
+      // devData.value.data_array = data.data_array;
+      devData.value.speed = data.speed
+      devData.value.swing_mode = data.swing_mode
+      devData.value.power = data.power
+      devData.value.set_temper = data.set_temper
+      devData.value.id_num = data.id_num
+      getPeopleData(data.data_array) //处理人形站位
+      showfengYe()
+    })
+    .catch((e) => {
+      // console.log(e, '接口异常');
+    })
 }
-const js =  new P_8009369()
+const js = new P_8009369()
 const dealData = (data) => {
   let newStatusStr = js.fromDevice(data)
   try {
@@ -675,78 +725,74 @@ const dealData = (data) => {
       console.log('前端解析上报数据风避radarWindAvoidPeople----->', reported?.radarWindAvoidPeople)
       console.log('前端解析上报数据人近radarPeopleNearSoftWind----->', reported?.radarPeopleNearSoftWind)
       console.log('前端解析上报数据actualMark----->', reported?.actualMark)
-      devData.value.right_swing_area = (reported?.actAnglePositionForHordirH2 !== undefined) ?
-          reported?.actAnglePositionForHordirH2 : devData.value.right_swing_area
-      devData.value.left_swing_area = (reported?.actAnglePositionForHordir !== undefined) ?
-          reported?.actAnglePositionForHordir : devData.value.left_swing_area
-      devData.value.speed = (reported?.actualMark !== undefined) ?  reported?.actualMark : devData.value.speed
-      if (reported?.radarWindFollowPeople == 0 || reported?.radarWindAvoidPeople == 0 ||
-          reported?.radarPeopleNearSoftWind == 0){
+      devData.value.right_swing_area =
+        reported?.actAnglePositionForHordirH2 !== undefined ? reported?.actAnglePositionForHordirH2 : devData.value.right_swing_area
+      devData.value.left_swing_area =
+        reported?.actAnglePositionForHordir !== undefined ? reported?.actAnglePositionForHordir : devData.value.left_swing_area
+      devData.value.speed = reported?.actualMark !== undefined ? reported?.actualMark : devData.value.speed
+      if (reported?.radarWindFollowPeople == 0 || reported?.radarWindAvoidPeople == 0 || reported?.radarPeopleNearSoftWind == 0) {
         devData.value.swing_mode = 0
       }
-      if (reported?.radarWindFollowPeople == 1 || reported?.radarWindAvoidPeople == 1 ||
-          reported?.radarPeopleNearSoftWind == 1){
-        devData.value.swing_mode = reported?.radarWindFollowPeople == 1 ? 1 : reported?.radarWindAvoidPeople == 1 ? 2
-            : reported?.radarPeopleNearSoftWind == 1 ? 3 : 0
+      if (reported?.radarWindFollowPeople == 1 || reported?.radarWindAvoidPeople == 1 || reported?.radarPeopleNearSoftWind == 1) {
+        devData.value.swing_mode =
+          reported?.radarWindFollowPeople == 1 ? 1 : reported?.radarWindAvoidPeople == 1 ? 2 : reported?.radarPeopleNearSoftWind == 1 ? 3 : 0
       }
-      console.log("前端解析power",reported.power)
-      devData.value.power = (reported?.power !== undefined) ? reported.power : devData.value.power
-      devData.value.set_temper = (reported?.settemp !== undefined) ? reported?.settemp : devData.value.set_temper
-      devData.value.id_num = (reported?.radarTargetCount !== undefined) ?  reported?.radarTargetCount : devData.value.id_num
-      if (reported?.radarTargetCount == 1){
+      console.log('前端解析power', reported.power)
+      devData.value.power = reported?.power !== undefined ? reported.power : devData.value.power
+      devData.value.set_temper = reported?.settemp !== undefined ? reported?.settemp : devData.value.set_temper
+      devData.value.id_num = reported?.radarTargetCount !== undefined ? reported?.radarTargetCount : devData.value.id_num
+      if (reported?.radarTargetCount == 1) {
         getPeopleData([
           {
-            "id": reported?.radarTarget1Speed,
-            "angel": reported?.radarTarget1Angle + 30,   //角度，30-150°
-            "distance": reported?.radarTarget1Distance * 10,   //距离，单位厘米，0-350cm
-          }
+            id: reported?.radarTarget1Speed,
+            angel: reported?.radarTarget1Angle + 30, //角度，30-150°
+            distance: reported?.radarTarget1Distance * 10, //距离，单位厘米，0-350cm
+          },
         ])
-      }else if (reported?.radarTargetCount == 2){
+      } else if (reported?.radarTargetCount == 2) {
         getPeopleData([
           {
-            "id": reported?.radarTarget1Speed,
-            "angel": reported?.radarTarget1Angle + 30,   //角度，30-150°
-            "distance": reported?.radarTarget1Distance * 10,   //距离，单位厘米，0-350cm
+            id: reported?.radarTarget1Speed,
+            angel: reported?.radarTarget1Angle + 30, //角度，30-150°
+            distance: reported?.radarTarget1Distance * 10, //距离，单位厘米，0-350cm
           },
           {
-            "id": reported?.radarTarget2Speed,
-            "angel": reported?.radarTarget2Angle + 30,   //角度，30-150°
-            "distance": reported?.radarTarget2Distance * 10,   //距离，单位厘米，0-350cm
-          }
+            id: reported?.radarTarget2Speed,
+            angel: reported?.radarTarget2Angle + 30, //角度，30-150°
+            distance: reported?.radarTarget2Distance * 10, //距离，单位厘米，0-350cm
+          },
         ])
       }
-      if (reported?.radarTargetCount == 0){
+      if (reported?.radarTargetCount == 0) {
         devData.value.data_array = []
       }
       showfengYe()
       console.log('前端解析处理后的数据----->', devData.value)
     }
-  } catch (e){
+  } catch (e) {
     console.error(e, 'updateCurStatus，数据解析失败')
   }
 }
 const getPeopleData = (arr) => {
   //角度变化1-5°，认为人不动，界面小人保持静止；距离变化0-20cm，认为人不动，界面小人保持静止
   const devArr = [...arr]
-  if (devArr.length > 0 && devData.value.data_array.length > 0){
+  if (devArr.length > 0 && devData.value.data_array.length > 0) {
     for (const item of devArr) {
       for (const devItem of devData.value.data_array) {
-        if (devItem.id == item.id && (Math.abs(item.angel - devItem.angel) <= 5 && Math.abs(item.distance -
-            devItem.distance) <= 20)){
+        if (devItem.id == item.id && Math.abs(item.angel - devItem.angel) <= 5 && Math.abs(item.distance - devItem.distance) <= 20) {
           item.angel = devItem.angel
           item.distance = devItem.distance
         }
       }
     }
   }
-  devData.value.data_array = devArr;
+  devData.value.data_array = devArr
 }
 // watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newValue, oldVaule) => {
-  // 重新渲染
-  // console.log(newValue, oldVaule, 'chongxinxuanra');
-  // setTimeout(() => { startPlay() }, 500);
+// 重新渲染
+// console.log(newValue, oldVaule, 'chongxinxuanra');
+// setTimeout(() => { startPlay() }, 500);
 // })
-
 </script>
 
 <style lang="scss">
@@ -924,7 +970,7 @@ const getPeopleData = (arr) => {
       position: fixed;
       animation: rotate_anticlockwise 3s linear infinite;
     }
-    .powertext{
+    .powertext {
       height: 100%;
       flex-direction: column;
     }
@@ -934,7 +980,7 @@ const getPeopleData = (arr) => {
       line-height: 134px;
       font-family: YouSheBiaoTiHei;
       font-size: 96px;
-      color: #C2F9FF;
+      color: #c2f9ff;
       font-weight: 600;
       text-align: center;
     }
@@ -943,7 +989,7 @@ const getPeopleData = (arr) => {
       margin-top: 30px;
       font-family: YouSheBiaoTiHei;
       font-size: 48px;
-      color: #C2F9FF;
+      color: #c2f9ff;
       font-weight: 600;
       text-align: center;
       opacity: 0.8;
@@ -959,13 +1005,13 @@ const getPeopleData = (arr) => {
 
     .img_pro {
       height: 636px;
-      z-index: 102;
+      z-index: 99;
       position: absolute;
       transform: translateX(-50%);
-      left: 50%;
+      left: 49.5%;
       top: 24px;
     }
-    .windArea{
+    .windArea {
       height: 990px;
       position: absolute;
       transform: translateX(-50%);
@@ -974,10 +1020,10 @@ const getPeopleData = (arr) => {
       top: 4%;
       margin-left: 5px;
     }
-    .ml{
+    .ml {
       margin-left: -5px !important;
     }
-    .windAreaQuanYuBottom{
+    .windAreaQuanYuBottom {
       height: 1428px;
       position: absolute;
       left: -268px;
@@ -986,7 +1032,7 @@ const getPeopleData = (arr) => {
       //top: 14.5%;
       //margin-left: -5px;
     }
-    .grid_wind_area{
+    .grid_wind_area {
       height: 430px;
       position: absolute;
       transform: translateX(-50%);
@@ -994,44 +1040,44 @@ const getPeopleData = (arr) => {
       margin-left: 16px;
       top: 37.5%;
     }
-    .windModeText{
+    .windModeText {
       position: absolute;
       transform: translateX(-50%);
       left: 50%;
       font-size: 72px;
       font-weight: 600;
-      color: #01FFFF;
+      color: #01ffff;
       z-index: 102;
       top: 78%;
     }
-    .windModeBgImg{
+    .windModeBgImg {
       width: 966px;
       position: absolute;
       transform: translateX(-50%);
       left: 50%;
       top: 83%;
     }
-    .people_grid_area{
+    .people_grid_area {
       position: absolute;
       //top: 30px;
       height: 318px;
       width: 122px;
       z-index: 110;
       //left: 50%;
-      .flagBgArea{
+      .flagBgArea {
         position: absolute;
         width: 116px;
         height: 64px;
         transform: translateX(-50%);
         left: 50%;
       }
-      .peopleFlag{
+      .peopleFlag {
         position: absolute;
         width: 116px;
         height: 64px;
         text-align: center;
         line-height: 60px;
-        top:0;
+        top: 0;
         font-size: 40px;
         font-weight: 600;
         color: #090808;
@@ -1039,7 +1085,7 @@ const getPeopleData = (arr) => {
         transform: translateX(-50%);
         left: 50%;
       }
-      .peopleImg{
+      .peopleImg {
         position: absolute;
         height: 240px;
         margin-top: 20px;
@@ -1048,7 +1094,7 @@ const getPeopleData = (arr) => {
         top: 58px;
       }
     }
-    .grid_areaPeople{
+    .grid_areaPeople {
       position: absolute;
       height: 620px;
       width: 2500px;
@@ -1068,12 +1114,12 @@ const getPeopleData = (arr) => {
       transform: translateX(-50%);
       left: 50%;
       z-index: 100;
-      .gridImg{
+      .gridImg {
         height: 490px;
         width: 100%;
       }
-      .radar_skeleton_layer{
-        height:80%;
+      .radar_skeleton_layer {
+        height: 80%;
         width: 100%;
         transform: translate(-50%, -50%);
         position: absolute;
@@ -1119,7 +1165,6 @@ const getPeopleData = (arr) => {
       width: 646px;
       height: 646px;
     }
-
   }
 
   .wind_svga {
@@ -1135,14 +1180,14 @@ const getPeopleData = (arr) => {
     width: 1726px;
     height: 374px;
     bottom: 4.4%;
-    background-image: linear-gradient(90deg, rgba(1, 255, 255, 0.00) 26%, rgba(1, 255, 255, 0.31) 48%, rgba(1, 255, 255, 0.00) 71%);
+    background-image: linear-gradient(90deg, rgba(1, 255, 255, 0) 26%, rgba(1, 255, 255, 0.31) 48%, rgba(1, 255, 255, 0) 71%);
     text-align: center;
 
     .wind_mode_str {
       margin-top: 80px;
       font-family: PingFang-SC-Heavy;
       font-size: 96px;
-      color: #01FFFF;
+      color: #01ffff;
       font-weight: 400;
     }
 
@@ -1151,7 +1196,7 @@ const getPeopleData = (arr) => {
       opacity: 0.6;
       font-family: PingFangSC-Medium;
       font-size: 72px;
-      color: #01FFFF;
+      color: #01ffff;
       font-weight: 500;
     }
   }
@@ -1181,19 +1226,19 @@ const getPeopleData = (arr) => {
       }
 
       25% {
-        -webkit-transform: translate(-50%, -50%) rotate(90deg);
+        -webkit-transform: translate(-50%, -50%) rotate(-90deg);
       }
 
       50% {
-        -webkit-transform: translate(-50%, -50%) rotate(180deg);
+        -webkit-transform: translate(-50%, -50%) rotate(-180deg);
       }
 
       75% {
-        -webkit-transform: translate(-50%, -50%) rotate(270deg);
+        -webkit-transform: translate(-50%, -50%) rotate(-270deg);
       }
 
       100% {
-        -webkit-transform: translate(-50%, -50%) rotate(360deg);
+        -webkit-transform: translate(-50%, -50%) rotate(-360deg);
       }
     }
 
@@ -1209,12 +1254,12 @@ const getPeopleData = (arr) => {
       position: fixed;
       //animation: rotate_clockwise 3s linear infinite;
     }
-    .singleScan{
+    .singleScan {
       width: 330px;
       height: 330px;
       position: absolute;
       left: 50%;
-      transform: translate(-50%,-50%);
+      transform: translate(-50%, -50%);
       top: 50%;
       animation: rotate_clockwise 3s linear infinite;
     }
@@ -1224,11 +1269,11 @@ const getPeopleData = (arr) => {
       text-align: center;
       font-family: YouSheBiaoTiHei;
       font-size: 92px;
-      color: #01E7FF;
+      color: #01e7ff;
       font-weight: 400;
     }
-    .powerOffState{
-      color: #FFFFFF;
+    .powerOffState {
+      color: #ffffff;
     }
 
     .heat_num_hint {
@@ -1236,7 +1281,7 @@ const getPeopleData = (arr) => {
       text-align: center;
       font-family: YouSheBiaoTiHei;
       font-size: 28px;
-      color: #01E7FF;
+      color: #01e7ff;
       font-weight: 400;
     }
   }
@@ -1247,7 +1292,7 @@ const getPeopleData = (arr) => {
     opacity: 0.8;
     font-family: PingFangSC-Light;
     font-size: 64px;
-    color: #C2F9FF;
+    color: #c2f9ff;
     font-weight: 300;
   }
 
@@ -1262,22 +1307,22 @@ const getPeopleData = (arr) => {
       border-radius: 16px;
       border: 3px solid rgba(24, 254, 249, 0.4);
       font-family: PingFang-SC-Heavy;
-      color: #C2F9FF;
+      color: #c2f9ff;
       text-align: center;
-      .itemLeft{
+      .itemLeft {
         width: 100px;
         margin-left: 48px;
         font-size: 72px;
         font-weight: 600;
       }
-      .itemAngel{
+      .itemAngel {
         width: 120px;
         text-align: left;
         margin-left: 52px;
         font-size: 60px;
         font-weight: 500;
       }
-      .itemDistance{
+      .itemDistance {
         margin-left: 40px;
         font-size: 60px;
         font-weight: 500;
@@ -1291,22 +1336,31 @@ const getPeopleData = (arr) => {
         margin-left: 50px;
         width: 2px;
         height: 48px;
-        background: #17F4F2;
+        background: #17f4f2;
         opacity: 0.4;
       }
-
     }
   }
 
   .radar_point_cloud_panel {
-    position: fixed;
-    top: 37%;
+    position: absolute;
+    top: 55%;
     width: 1000px;
     height: 780px;
     border-radius: 0;
     overflow: hidden;
     border: none;
     background: transparent;
+    .dev {
+      width: 42px;
+      height: 114px;
+      position: absolute;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      top: 45%;
+      background: linear-gradient(180deg, rgba(92, 255, 255, 0) 0%, rgba(92, 255, 255, 0.8) 100%);
+      z-index: 1000;
+    }
   }
 
   .tips {
@@ -1314,11 +1368,11 @@ const getPeopleData = (arr) => {
     bottom: 3.9%;
     font-family: PingFangSC-Light;
     font-size: 48px;
-    color: #C2F9FF;
+    color: #c2f9ff;
     font-weight: 300;
   }
 }
-.noScan{
+.noScan {
   animation: none !important;
 }
 </style>

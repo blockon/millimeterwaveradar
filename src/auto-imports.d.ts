@@ -9,6 +9,7 @@ declare global {
   const Tools: typeof import('./utils/tools.js')['Tools']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const binaryToString: typeof import('./utils/binaryToString.js')['binaryToString']
+  const buildNearestRadarPersonRows: typeof import('./utils/radarPersonMetrics.js')['buildNearestRadarPersonRows']
   const commonApi: typeof import('./api/commonApi.js')['default']
   const computed: typeof import('vue')['computed']
   const createApp: typeof import('vue')['createApp']
@@ -19,16 +20,21 @@ declare global {
   const defineStore: typeof import('pinia')['defineStore']
   const deviceStore: typeof import('./store/deviceStore.js')['deviceStore']
   const effectScope: typeof import('vue')['effectScope']
+  const formatTrackIdForHeatItem: typeof import('./utils/radarPersonMetrics.js')['formatTrackIdForHeatItem']
   const getActivePinia: typeof import('pinia')['getActivePinia']
   const getCurrentInstance: typeof import('vue')['getCurrentInstance']
   const getCurrentScope: typeof import('vue')['getCurrentScope']
+  const getFloorOriginXZFromRadarParams: typeof import('./utils/radarPersonMetrics.js')['getFloorOriginXZFromRadarParams']
   const h: typeof import('vue')['h']
+  const horizontalAngleDegFromXZ: typeof import('./utils/radarPersonMetrics.js')['horizontalAngleDegFromXZ']
+  const horizontalDistanceFromOriginXZ: typeof import('./utils/radarPersonMetrics.js')['horizontalDistanceFromOriginXZ']
   const http: typeof import('./api/request.js')['http']
   const inject: typeof import('vue')['inject']
   const isProxy: typeof import('vue')['isProxy']
   const isReactive: typeof import('vue')['isReactive']
   const isReadonly: typeof import('vue')['isReadonly']
   const isRef: typeof import('vue')['isRef']
+  const kptJointToSceneXZ: typeof import('./utils/radarPersonMetrics.js')['kptJointToSceneXZ']
   const mapActions: typeof import('pinia')['mapActions']
   const mapGetters: typeof import('pinia')['mapGetters']
   const mapState: typeof import('pinia')['mapState']
@@ -103,6 +109,7 @@ declare module 'vue' {
     readonly Tools: UnwrapRef<typeof import('./utils/tools.js')['Tools']>
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>
     readonly binaryToString: UnwrapRef<typeof import('./utils/binaryToString.js')['binaryToString']>
+    readonly buildNearestRadarPersonRows: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['buildNearestRadarPersonRows']>
     readonly commonApi: UnwrapRef<typeof import('./api/commonApi.js')['default']>
     readonly computed: UnwrapRef<typeof import('vue')['computed']>
     readonly createApp: UnwrapRef<typeof import('vue')['createApp']>
@@ -113,16 +120,21 @@ declare module 'vue' {
     readonly defineStore: UnwrapRef<typeof import('pinia')['defineStore']>
     readonly deviceStore: UnwrapRef<typeof import('./store/deviceStore.js')['deviceStore']>
     readonly effectScope: UnwrapRef<typeof import('vue')['effectScope']>
+    readonly formatTrackIdForHeatItem: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['formatTrackIdForHeatItem']>
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
+    readonly getFloorOriginXZFromRadarParams: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['getFloorOriginXZFromRadarParams']>
     readonly h: UnwrapRef<typeof import('vue')['h']>
+    readonly horizontalAngleDegFromXZ: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['horizontalAngleDegFromXZ']>
+    readonly horizontalDistanceFromOriginXZ: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['horizontalDistanceFromOriginXZ']>
     readonly http: UnwrapRef<typeof import('./api/request.js')['http']>
     readonly inject: UnwrapRef<typeof import('vue')['inject']>
     readonly isProxy: UnwrapRef<typeof import('vue')['isProxy']>
     readonly isReactive: UnwrapRef<typeof import('vue')['isReactive']>
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
     readonly isRef: UnwrapRef<typeof import('vue')['isRef']>
+    readonly kptJointToSceneXZ: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['kptJointToSceneXZ']>
     readonly mapActions: UnwrapRef<typeof import('pinia')['mapActions']>
     readonly mapGetters: UnwrapRef<typeof import('pinia')['mapGetters']>
     readonly mapState: UnwrapRef<typeof import('pinia')['mapState']>
