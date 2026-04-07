@@ -58,13 +58,15 @@
         <div class="grid_area">
           <div class="radar_skeleton_layer">
             <ThreeStickmanView
-              :kpts-data="latestKpts"
-              :track-ids="radarTrackIds"
+              :kpts-data="displayKptsData"
+              :track-ids="displayTrackIds"
               :point-cloud-data="latestPointCloud"
               :room-config="roomConfig"
               :radar-params="radarParams"
               :show-skeleton="true"
               :show-point-cloud="false"
+              :show-sector-floor="true"
+              :sector-floor-idle="radarNoPerson"
               skeleton-mode="stickman" />
           </div>
         </div>
@@ -81,11 +83,11 @@
           {{ rightPanelPersonLabel }}
         </div>
       </div>
-      <div class="radar_point_cloud_panel">
+      <div class="radar_point_cloud_panel" v-show="!radarNoPerson">
         <div class="dev"></div>
         <ThreeStickmanView
-          :kpts-data="latestKpts"
-          :track-ids="radarTrackIds"
+          :kpts-data="displayKptsData"
+          :track-ids="displayTrackIds"
           :point-cloud-data="latestPointCloud"
           :room-config="roomConfig"
           :radar-params="radarParams"
@@ -439,11 +441,32 @@ const radarPersonCount = computed(() => {
   return latestKpts.value?.length ?? 0
 })
 
+/** 雷达已连接且 0 人：右侧隐藏扇形，左侧扇形向前 + 灰色 */
+const radarNoPerson = computed(() => radarConnected.value && radarPersonCount.value === 0)
+
 const radarFloorOriginXZ = computed(() => getFloorOriginXZFromRadarParams(radarParams.value, roomConfig.value?.depth ?? 5))
 
 const nearestRadarTargets = computed(() => {
   const depth = roomConfig.value?.depth ?? 5
   return buildNearestRadarPersonRows(latestKpts.value, radarTrackIds.value, depth, 3, radarFloorOriginXZ.value)
+})
+
+const displayRadarSourceIndices = computed(() => {
+  return nearestRadarTargets.value
+    .map((row) => row?.sourceIndex)
+    .filter((idx) => Number.isInteger(idx) && idx >= 0)
+})
+
+const displayKptsData = computed(() => {
+  if (!Array.isArray(latestKpts.value) || latestKpts.value.length === 0) return []
+  return displayRadarSourceIndices.value.map((idx) => latestKpts.value[idx]).filter(Boolean)
+})
+
+const displayTrackIds = computed(() => {
+  if (!Array.isArray(radarTrackIds.value) || radarTrackIds.value.length === 0) return []
+  return displayRadarSourceIndices.value
+    .map((idx) => radarTrackIds.value[idx])
+    .filter((trackId) => trackId != null)
 })
 
 const rightPanelPersonLabel = computed(() => {
@@ -481,30 +504,6 @@ const formatRadarRowDistance = (row) => {
 const formatRadarRankByIndex = (index) => String(index + 1).padStart(2, '0')
 
 const windTimer = ref(null)
-const startBaiFeng = () => {
-  if (!windTimer.value) {
-    let i = 1
-    let isMax = false
-    windModeImg.value = getImageUrl(`fengYe1.png`)
-    windTimer.value = setInterval(() => {
-      if (!isMax) {
-        //左到右
-        i++
-        if (i >= 5) isMax = true
-      } else {
-        i--
-        if (i <= 1) isMax = false
-      }
-      windModeImg.value = getImageUrl(`fengYe${i}.png`)
-    }, 1000)
-  }
-}
-const clearWindTimer = () => {
-  if (windTimer.value) {
-    clearInterval(windTimer.value)
-    windTimer.value = null
-  }
-}
 const windModeImgLeft = ref('')
 const windModeImgRight = ref('')
 const showfengYe = () => {
@@ -567,39 +566,22 @@ const showfengYe = () => {
     windModeImgRight.value = getImageUrl(`${imgNameRight}${imgNameRightLast}`)
   }
 }
-//全域扫风，根据返回up_swing_area角度旋转出风角度
-const windAreaStyle = computed(() => {
-  if (devData.value.swing_mode == 0) {
-    let angle = 0
-    if (devData.value.left_swing_area < 90) {
-      angle = 30 - (devData.value.left_swing_area - 30) / 2
-    } else {
-      angle = -(devData.value.left_swing_area - 90) / 2
-    }
-    return {
-      transform: `translateX(-50%) rotate(${angle}deg)`, //rotate(30deg)
-      transformOrigin: 'center top', // 设置旋转原点为上边中心点
-      transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-    }
-  }
-  return {
-    transform: 'translateX(-50%)',
-    transformOrigin: 'center center', // 保持默认中心点旋转
-  }
-})
+
 const peopleBg = computed(() => {
-  return !devData.value.power
-    ? getImageUrl('noPeople.png')
-    : devData.value.data_array.length > 1
-      ? getImageUrl('morePeople.png')
-      : getImageUrl('ic_singlePeople.png')
+  const mapper = {
+    0: getImageUrl('noPeople.png'),
+    1: getImageUrl('ic_singlePeople.png'),
+    2: getImageUrl('morePeople.png'),
+  }
+  return mapper[radarPersonCount.value] || mapper[2]
 })
 const peopleScan = computed(() => {
-  return !devData.value.power
-    ? getImageUrl('noPeopleScan.png')
-    : devData.value.data_array.length > 1
-      ? getImageUrl('morePeopleScan.png')
-      : getImageUrl('singleScan.png')
+  const mapper = {
+    0: getImageUrl('noPeopleScan.png'),
+    1: getImageUrl('singleScan.png'),
+    2: getImageUrl('morePeopleScan.png'),
+  }
+  return mapper[radarPersonCount.value] || mapper[2]
 })
 const devImg = computed(() => {
   return devData.value.power == 1 ? getImageUrl('GHS_open.png') : getImageUrl('GHS_close.png')
@@ -1344,20 +1326,21 @@ const getPeopleData = (arr) => {
 
   .radar_point_cloud_panel {
     position: absolute;
-    top: 55%;
-    width: 1000px;
-    height: 780px;
+    top: 45%;
+    width: 1800px;
+    height: 1200px;
     border-radius: 0;
     overflow: hidden;
     border: none;
     background: transparent;
     .dev {
-      width: 42px;
-      height: 114px;
       position: absolute;
       left: 50%;
+      width: 42px;
+      height: 114px;
+      border-radius: 8px;
       transform: translate(-50%, -50%);
-      top: 45%;
+      top: 47%;
       background: linear-gradient(180deg, rgba(92, 255, 255, 0) 0%, rgba(92, 255, 255, 0.8) 100%);
       z-index: 1000;
     }

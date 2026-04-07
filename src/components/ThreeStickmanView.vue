@@ -15,6 +15,8 @@ const props = defineProps({
   showSkeleton: { type: Boolean, default: false },
   showPointCloud: { type: Boolean, default: true },
   skeletonMode: { type: String, default: "stickman" },
+  showSectorFloor: { type: Boolean, default: true },
+  sectorFloorIdle: { type: Boolean, default: false },
 })
 
 const containerRef = ref(null)
@@ -53,12 +55,16 @@ onMounted(() => {
   if (sceneManager) {
     sceneManager.setSkeletonVisible(props.showSkeleton)
     sceneManager.setPointCloudVisible(props.showPointCloud)
+    sceneManager.updateRadarModel(props.radarParams && typeof props.radarParams === "object" ? props.radarParams : {})
+    sceneManager.setSectorFloorVisible(props.showSectorFloor !== false)
+    sceneManager.setSectorFloorIdle(!!props.sectorFloorIdle)
   }
 })
 
 onUnmounted(() => {
-  cancelAnimationFrame(animationId)
-  if (resizeObserver && containerRef.value) resizeObserver.disconnect()
+  if (animationId != null) cancelAnimationFrame(animationId)
+  resizeObserver?.disconnect()
+  resizeObserver = null
   if (sceneManager) {
     sceneManager.dispose()
     sceneManager = null
@@ -108,6 +114,20 @@ watch(
   () => props.showPointCloud,
   (v) => {
     if (sceneManager) sceneManager.setPointCloudVisible(v)
+  }
+)
+
+watch(
+  () => props.showSectorFloor,
+  (v) => {
+    if (sceneManager) sceneManager.setSectorFloorVisible(v !== false)
+  }
+)
+
+watch(
+  () => props.sectorFloorIdle,
+  (v) => {
+    if (sceneManager) sceneManager.setSectorFloorIdle(!!v)
   }
 )
 </script>

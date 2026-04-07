@@ -40,9 +40,11 @@ export class StickmanScene {
     this.labelRenderer = null
     this.skeletonVisible = true
     this.pointCloudVisible = true
-    const cachedForward = Number.parseFloat(localStorage.getItem("radarFloorForwardDeg") || "")
-    this.floorForwardDeg = Number.isFinite(cachedForward) ? cachedForward : 180
+    this.floorForwardDeg = 180
     this.floorOrigin = new THREE.Vector3(0, 0, 0)
+    this.sectorFloorVisible = true
+    this.sectorFloorIdle = false
+    this.radarModelReady = false
     this.init()
   }
 
@@ -268,8 +270,10 @@ export class StickmanScene {
     const radarX = parseFloat(params.radarX_room ?? params.radarXroom) || 0
     const radarY = parseFloat(params.radarY_room ?? params.radarYroom) || 0
     const radarHeight = parseFloat(params.radarHeight) || 0.05
-    const azimuth = parseFloat(params.radarAzimuth_room ?? params.radarAzimuthroom ?? params.azimuth_room) || 0
-    const elevation = parseFloat(params.downtAngle) ?? 0
+    const rawAzimuth = Number.parseFloat(params.radarAzimuth_room ?? params.radarAzimuthroom ?? params.azimuth_room)
+    const azimuth = Number.isFinite(rawAzimuth) ? rawAzimuth : 0
+    const rawElevation = Number.parseFloat(params.downtAngle)
+    const elevation = Number.isFinite(rawElevation) ? rawElevation : 0
     const finalX = radarY - this.config.roomDepth / 2
     const finalZ = -radarX
     const finalY = radarHeight
@@ -287,10 +291,14 @@ export class StickmanScene {
     this.radarGroup.visible = false // 隐藏雷达指示器
     this.radarGroup.updateMatrix()
 
-    const nextForwardDeg = 180 - azimuth
-    if (Math.abs(nextForwardDeg - this.floorForwardDeg) > 0.1) {
+    const hasValidAzimuth = Number.isFinite(rawAzimuth)
+    if (hasValidAzimuth && !this.radarModelReady) {
+      this.radarModelReady = true
+      if (this.room) this.room.visible = this.sectorFloorVisible
+    }
+    const nextForwardDeg = 180 - rawAzimuth
+    if (hasValidAzimuth && Math.abs(nextForwardDeg - this.floorForwardDeg) > 0.1) {
       this.floorForwardDeg = nextForwardDeg
-      localStorage.setItem("radarFloorForwardDeg", String(nextForwardDeg))
       this.updateRoom(this.config.roomWidth, this.config.roomDepth)
     }
   }
@@ -305,35 +313,50 @@ export class StickmanScene {
     this.room = new THREE.Group()
     this.createSectorFloor(this.room)
     this.room.position.copy(this.floorOrigin)
+    this.room.visible = this.sectorFloorVisible && this.radarModelReady
     this.scene.add(this.room)
   }
 
+  setSectorFloorVisible(visible) {
+    this.sectorFloorVisible = !!visible
+    if (this.room) this.room.visible = this.sectorFloorVisible && this.radarModelReady
+  }
+
+  setSectorFloorIdle(active) {
+    const next = !!active
+    if (this.sectorFloorIdle === next) return
+    this.sectorFloorIdle = next
+    this.updateRoom(this.config.roomWidth, this.config.roomDepth)
+  }
+
   createSectorFloor(group) {
-    const startDeg = this.floorForwardDeg - 60
-    const endDeg = this.floorForwardDeg + 60
+    const forwardDeg = this.floorForwardDeg
+    const startDeg = forwardDeg - 60
+    const endDeg = forwardDeg + 60
+    const idle = this.sectorFloorIdle
     const radii = [2, 2.5, 5]
     const y = 0.01
 
-    // 扇形底色：中心#D2FCFF，向边缘透明渐变
-    this.createSectorGradient(group, startDeg, endDeg, 5, y - 0.003)
+    this.createSectorGradient(group, startDeg, endDeg, 5, y - 0.003, idle)
 
-    // 两条120°边界射线（虚线）
-    this.createDashedRay(group, startDeg, 5, y)
-    this.createDashedRay(group, endDeg, 5, y)
+    this.createDashedRay(group, startDeg, 5, y, idle)
+    this.createDashedRay(group, endDeg, 5, y, idle)
 
-    // 2m / 2.5m / 5m 弧形虚线
     radii.forEach((r) => {
-      this.createDashedArc(group, startDeg, endDeg, r, y, 80)
+      this.createDashedArc(group, startDeg, endDeg, r, y, 80, idle)
     })
 
-    // 文本标注：5m弧线外中点“120°”
-    const angleMid = this.floorForwardDeg
+    const angleMid = forwardDeg
     const midPos = this.getSectorPoint(5.45, angleMid)
-    const angleLabel = this.createTextSprite("120°", 64, "#9fe8ff")
+    const angleLabel = this.createTextSprite(
+      "120°",
+      64,
+      idle ? "#C4C4C4" : "#9fe8ff",
+      idle ? "rgba(60,60,60,0.85)" : "rgba(15,36,45,0.9)"
+    )
     angleLabel.position.set(midPos.x, 0.05, midPos.z)
     group.add(angleLabel)
 
-    // 左右两侧距离标注：2m / 2.5m / 5m
     const leftLabelDeg = endDeg + 2
     const rightLabelDeg = startDeg - 2
     const labelItems = [
@@ -341,37 +364,39 @@ export class StickmanScene {
       { text: "2.5m", radius: 2.65 },
       { text: "5m", radius: 5.15 },
     ]
+    const distLabelColor = idle ? "#C4C4C4" : "#8dd7ea"
+    const distLabelStroke = idle ? "rgba(60,60,60,0.85)" : "rgba(15,36,45,0.9)"
     labelItems.forEach((item) => {
       const leftPoint = this.getSectorPoint(item.radius, leftLabelDeg)
-      const leftLabel = this.createTextSprite(item.text, 52, "#8dd7ea")
+      const leftLabel = this.createTextSprite(item.text, 52, distLabelColor, distLabelStroke)
       leftLabel.position.set(leftPoint.x, 0.05, leftPoint.z)
       group.add(leftLabel)
 
       const rightPoint = this.getSectorPoint(item.radius, rightLabelDeg)
-      const rightLabel = this.createTextSprite(item.text, 52, "#8dd7ea")
+      const rightLabel = this.createTextSprite(item.text, 52, distLabelColor, distLabelStroke)
       rightLabel.position.set(rightPoint.x, 0.05, rightPoint.z)
       group.add(rightLabel)
     })
   }
 
-  createDashedRay(group, angleDeg, radius, y = 0.01) {
+  createDashedRay(group, angleDeg, radius, y = 0.01, idle = false) {
     const p0 = new THREE.Vector3(0, y, 0)
     const p1xz = this.getSectorPoint(radius, angleDeg)
     const p1 = new THREE.Vector3(p1xz.x, y, p1xz.z)
     const geometry = new THREE.BufferGeometry().setFromPoints([p0, p1])
     const material = new THREE.LineDashedMaterial({
-      color: 0x8cc7d8,
+      color: idle ? 0xc4c4c4 : 0x8cc7d8,
       dashSize: 0.12,
       gapSize: 0.08,
       transparent: true,
-      opacity: 0.9,
+      opacity: idle ? 0.95 : 0.9,
     })
     const line = new THREE.Line(geometry, material)
     line.computeLineDistances()
     group.add(line)
   }
 
-  createDashedArc(group, startDeg, endDeg, radius, y = 0.01, segments = 80) {
+  createDashedArc(group, startDeg, endDeg, radius, y = 0.01, segments = 80, idle = false) {
     const points = []
     for (let i = 0; i <= segments; i++) {
       const t = i / segments
@@ -381,11 +406,11 @@ export class StickmanScene {
     }
     const geometry = new THREE.BufferGeometry().setFromPoints(points)
     const material = new THREE.LineDashedMaterial({
-      color: radius >= 5 ? 0xa5edff : 0x77b4c8,
+      color: idle ? (radius >= 5 ? 0xd0d0d0 : 0xbcbcbc) : radius >= 5 ? 0xa5edff : 0x77b4c8,
       dashSize: 0.12,
       gapSize: 0.08,
       transparent: true,
-      opacity: radius >= 5 ? 0.95 : 0.82,
+      opacity: idle ? 0.95 : radius >= 5 ? 0.95 : 0.82,
     })
     const line = new THREE.Line(geometry, material)
     line.computeLineDistances()
@@ -400,7 +425,7 @@ export class StickmanScene {
     }
   }
 
-  createTextSprite(text, fontSize = 48, color = "#9fe8ff") {
+  createTextSprite(text, fontSize = 48, color = "#9fe8ff", strokeStyle = "rgba(15,36,45,0.9)") {
     const canvas = document.createElement("canvas")
     const ctx = canvas.getContext("2d")
     const pad = 26
@@ -414,7 +439,7 @@ export class StickmanScene {
     drawCtx.textAlign = "center"
     drawCtx.textBaseline = "middle"
     drawCtx.fillStyle = color
-    drawCtx.strokeStyle = "rgba(15,36,45,0.9)"
+    drawCtx.strokeStyle = strokeStyle
     drawCtx.lineWidth = 8
     drawCtx.strokeText(text, canvas.width / 2, canvas.height / 2)
     drawCtx.fillText(text, canvas.width / 2, canvas.height / 2)
@@ -434,15 +459,14 @@ export class StickmanScene {
     return sprite
   }
 
-  createSectorGradient(group, startDeg, endDeg, maxRadius, y = 0.005) {
+  createSectorGradient(group, startDeg, endDeg, maxRadius, y = 0.005, idle = false) {
     const segments = 120
     const positions = []
     const alphas = []
     const indices = []
 
-    // 中心点
     positions.push(0, y, 0)
-    alphas.push(0.5)
+    alphas.push(idle ? 0.42 : 0.5)
 
     for (let i = 0; i <= segments; i++) {
       const t = i / segments
@@ -463,7 +487,7 @@ export class StickmanScene {
     geometry.computeVertexNormals()
     const material = new THREE.ShaderMaterial({
       uniforms: {
-        uColor: { value: new THREE.Color("#D2FCFF") },
+        uColor: { value: new THREE.Color(idle ? "#C4C4C4" : "#D2FCFF") },
       },
       vertexShader: `
         attribute float aAlpha;
@@ -843,7 +867,18 @@ export class StickmanScene {
       this.stickmanTemplateModel = null
     }
     this.controls?.dispose()
+    const canvasEl = this.canvas
+    const gl = this.renderer.getContext()
     this.renderer.dispose()
+    try {
+      const ext = gl.getExtension("WEBGL_lose_context")
+      if (ext) ext.loseContext()
+    } catch {
+      /* ignore */
+    }
+    if (canvasEl && canvasEl.parentElement) {
+      canvasEl.parentElement.removeChild(canvasEl)
+    }
     if (this.labelRenderer) {
       this.labelRenderer.domElement?.remove()
       this.labelRenderer = null

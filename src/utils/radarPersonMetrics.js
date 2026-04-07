@@ -57,10 +57,10 @@ export function buildNearestRadarPersonRows(kptsList, trackIds, roomDepth, maxRo
     const dz = z - oz
     const distanceM = horizontalDistanceFromOriginXZ(dx, dz)
     const angel = horizontalAngleDegFromXZ(dx, dz)
-    rows.push({ trackId, distanceM, angel, sortKey: distanceM })
+    rows.push({ trackId, distanceM, angel, sortKey: distanceM, sourceIndex: index })
   }
   rows.sort((a, b) => a.sortKey - b.sortKey)
   return rows
     .slice(0, maxRows)
-    .map(({ trackId, distanceM, angel }) => ({ trackId, distanceM, angel }))
+    .map(({ trackId, distanceM, angel, sourceIndex }) => ({ trackId, distanceM, angel, sourceIndex }))
 }
