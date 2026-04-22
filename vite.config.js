@@ -44,6 +44,10 @@ const autoPlugins = [
 
 export default ({ mode }) => {
   const env = loadEnv(mode, process.cwd())
+  const deviceHost = env.VITE_LOCAL_DEVICE_HOST || '192.168.1.1'
+  const devicePort = env.VITE_LOCAL_DEVICE_PORT || '8089'
+  const localDeviceApiBase =
+    env.VITE_LOCAL_DEVICE_API_BASE || `http://${deviceHost}:${devicePort}`
   return defineConfig({
     base: './',
     build: {
@@ -119,13 +123,12 @@ export default ({ mode }) => {
       },
     },
     server: {
-      port: '8080',
+      port: '1573',
       host: '0.0.0.0',
       proxy: {
         '/api': {
-          target: 'http://192.168.1.1:8089',
+          target: localDeviceApiBase,
           changeOrigin: true,
-          rewrite: path => path.replace(RegExp(`^api`), '')
         },
         '/radar-api': {
           target: 'https://mmradar.inchitech.com',

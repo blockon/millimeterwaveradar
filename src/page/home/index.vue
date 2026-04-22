@@ -13,7 +13,7 @@
   <div class="home_page mid">
     <button class="radar_settings_btn" @click="showLoginPanel = true">设置</button>
 
-    <div v-if="showLoginPanel" class="radar_control_mask" @click.self="showLoginPanel = false">
+    <div v-if="showLoginPanel" class="radar_control_mask">
       <div class="radar_control_panel">
         <button class="control_close_btn" @click="showLoginPanel = false">×</button>
         <div class="control_title">雷达连接设置</div>
@@ -130,10 +130,12 @@ import SVGA from 'svgaplayerweb'
 import { P_8009369 } from '@/utils/analysis.js'
 import ThreeStickmanView from '@/components/ThreeStickmanView.vue'
 import { AUTH_API, RADAR_WS_URL } from '@/config/radarApi'
+import { getDataHttpBase } from '@/config/deviceApi'
 import sessionManager from '@/utils/login/sessionManager'
 import { binaryToString } from '@/utils/binaryToString'
 import { parseCompressedPcloud } from '@/utils/parse_compressed_pcloud'
 import { buildNearestRadarPersonRows, getFloorOriginXZFromRadarParams } from '@/utils/radarPersonMetrics'
+import { showToast } from 'vant'
 
 let isReverse = {}
 let player = {}
@@ -151,6 +153,9 @@ const radarLoginForm = reactive({
   password: '',
   deviceId: (localStorage.getItem('radarDeviceId') || import.meta.env.VITE_RADAR_DEVICE_ID || '').trim(),
 })
+const deviceLanHost = ref(
+  (localStorage.getItem('deviceLanHost') || import.meta.env.VITE_LOCAL_DEVICE_HOST || '').trim()
+)
 const radarConnected = ref(false)
 const radarConnecting = ref(false)
 const radarError = ref('')
@@ -314,6 +319,7 @@ const handleLoginAndConnect = async () => {
     })
     const data = await res.json()
     if (data.code === 200) {
+      localStorage.setItem('deviceLanHost', deviceLanHost.value.trim())
       const user = data.data || {}
       await sessionManager.setSession({
         user: {
@@ -325,6 +331,8 @@ const handleLoginAndConnect = async () => {
         sessionId: user.sessionId,
       })
       localStorage.setItem('radarLoginUsername', username)
+      showToast({ message: '登录成功', position: 'bottom' })
+      showLoginPanel.value = false
       restartRadarWs()
     } else {
       radarError.value = data.message || '登录失败'
@@ -674,6 +682,8 @@ const getData = () => {
   http({
     method: 'POST',
     url: '/api/getData',
+    baseURL: getDataHttpBase(deviceLanHost.value),
+    skipWindowBase: true,
   })
     .then((data) => {
       if (!data) return

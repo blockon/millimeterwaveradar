@@ -27,7 +27,9 @@ http.interceptors.request.use(
       loading = showLoadingToast({ duration: 100000000 })
       requestNum++
     }
-    window.baseURL && (config.baseURL = window.baseURL)
+    if (!config.skipWindowBase && window.baseURL) {
+      config.baseURL = window.baseURL
+    }
     return config
   },
   (error) => Promise.reject(error)

@@ -11,6 +11,7 @@ node_modules
 dist
 www/
 dist-ssr
+build-electron
 *.local
 *.zip
 
@@ -26,3 +27,6 @@ dist-ssr
 *.sw?
 www
 冰箱数据UI包.rar
+dist-electron-out/
+dist-electron/
+release/
