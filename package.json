@@ -28,6 +28,7 @@
     "@vueuse/router": "9.6.0",
     "axios": "0.27.2",
     "echarts": "5.4.0",
+    "js-sha256": "^0.11.1",
     "mitt": "3.0.0",
     "moment": "2.29.4",
     "pinia": "2.0.22",
@@ -44,6 +45,9 @@
   "devDependencies": {
     "@rollup/plugin-inject": "5.0.2",
     "@vitejs/plugin-vue": "3.1.0",
+    "concurrently": "^9.1.2",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
     "eslint": "^8.57.1",
     "postcss-px-to-viewport": "1.1.1",
     "rollup-plugin-commonjs": "10.1.0",
@@ -56,9 +60,6 @@
     "unplugin-vue-components": "0.22.7",
     "vite": "3.2.5",
     "vite-plugin-resolve-externals": "0.2.2",
-    "concurrently": "^9.1.2",
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8",
     "wait-on": "^8.0.1"
   },
   "build": {

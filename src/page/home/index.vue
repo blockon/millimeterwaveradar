@@ -274,11 +274,17 @@ const disconnectRadarWs = () => {
 }
 
 const toSha256 = async (text) => {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(text)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+  // 优先使用浏览器原生 crypto.subtle（需要 HTTPS 或 localhost）
+  if (crypto.subtle) {
+    const encoder = new TextEncoder()
+    const data = encoder.encode(text)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+  }
+  // 非安全上下文（如 HTTP 局域网访问）下使用纯 JS 后备方案
+  const { sha256 } = await import('js-sha256')
+  return sha256(text)
 }
 
 const restartRadarWs = () => {
@@ -650,7 +656,7 @@ onMounted(() => {
     connectRadarWs(radarLoginForm.deviceId.trim(), sessionManager.getToken() || '')
   }
   timer.value = setInterval(() => {
-    getData()
+    // getData()
   }, 500)
   // getData();
   // showfengYe()
