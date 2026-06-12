@@ -141,12 +141,22 @@ export const deviceStore = defineStore('deviceStore', {
           console.error('[deviceStore] secretKey 为空，无法加密指令')
           return
         }
-        const order = window.JsFunction.toDevice(json)
+        let order = window.JsFunction.toDevice(json)
         if (!order) {
           console.error('[deviceStore] toDevice 转换失败，原始指令:', json)
           return
         }
+        // MQTT 需要原始 hex（55AA...），toDevice 可能返回 JSON 包裹格式 [{"data":"55AA...","delay":0}]
+        if (order.startsWith('[')) {
+          try {
+            const parsed = JSON.parse(order)
+            order = parsed[0]?.data || order
+          } catch {
+            // 不是合法 JSON，保持原样
+          }
+        }
         const encrypted = encryptMqttOrder(order, this.secretKey)
+        console.log('[deviceStore] MQTT 发送指令, hex:', order.slice(0, 40) + (order.length > 40 ? '...' : ''))
         this.mqttConnection.sendCommand(encrypted)
       } else {
         // 原生桥接通道（保持原有逻辑）
