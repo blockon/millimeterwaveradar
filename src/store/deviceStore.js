@@ -40,26 +40,40 @@ export const deviceStore = defineStore('deviceStore', {
     },
 
     // 根据 SN 下载设备专属协议 JS（雷达测试场景用）
-    loadProtocolBySn(sn) {
+    async loadProtocolBySn(sn) {
       if (!sn || sn.length < 10) {
         console.warn('[deviceStore] SN 无效，无法下载协议:', sn)
-        return Promise.resolve()
+        return
       }
       const materialCode = sn.slice(3, 10)
-      console.log('[deviceStore] 根据 SN 下载协议, materialCode:', materialCode)
-      return commonApi.getJs(materialCode).then(res => {
-        try {
-          let Func = null  // eslint-disable-line
-          const _js = !!res.data.materialCodeJs ? res.data.materialCodeJs[0].js : res.data.typeJs[0].js
-          eval(`(function(){Func = ${_js.includes(materialCode) ? `P_${materialCode}` : 'FRIDGE'};${_js};})()`)
-          window.JsFunction = new Func()
-          console.log('[deviceStore] 设备协议下载成功，JsFunction 已更新')
-        } catch (e) {
-          console.error('[deviceStore] 协议 JS 解析失败:', e)
+      // 云服务器地址，不走 window.baseURL（那是设备局域网 IP）
+      const cloudBase = (import.meta.env.VITE_BASE_GATEWAYURL || import.meta.env.VITE_BASE_URL || 'https://gateway.mymlsoft.com').replace(/\/$/, '')
+      // 兼容 VITE_BASE_URL 已包含 /saserver 路径的情况
+      const url = cloudBase.endsWith('/saserver') ? `${cloudBase}/js/getOne` : `${cloudBase}/saserver/js/getOne`
+      console.log('[deviceStore] 从云服务器下载协议, materialCode:', materialCode, 'url:', url)
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ material: materialCode }),
+        })
+        const json = await res.json()
+        if (!json.data) {
+          console.warn('[deviceStore] 协议下载返回空数据，使用兜底方案')
+          return
         }
-      }).catch(e => {
+        const _js = json.data.materialCodeJs ? json.data.materialCodeJs[0]?.js : json.data.typeJs?.[0]?.js
+        if (!_js) {
+          console.warn('[deviceStore] 协议 JS 内容为空，使用兜底方案')
+          return
+        }
+        let Func = null  // eslint-disable-line
+        eval(`(function(){Func = ${_js.includes(materialCode) ? `P_${materialCode}` : 'FRIDGE'};${_js};})()`)
+        window.JsFunction = new Func()
+        console.log('[deviceStore] 设备协议下载成功，JsFunction 已更新')
+      } catch (e) {
         console.error('[deviceStore] 协议下载失败，继续使用兜底 P_8009369:', e)
-      })
+      }
     },
 
     /**
