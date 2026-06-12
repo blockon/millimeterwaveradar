@@ -658,16 +658,11 @@ onMounted(() => {
   timer.value = setInterval(() => {
     // getData()
   }, 500)
-  // getData();
-  // showfengYe()
-  // setTimeout(() => {
-  //   getPeopleData( [{
-  //     "id": 7,
-  //     "angel": 35,
-  //     "distance": 180,
-  //     }
-  //   ])
-  // },1500)
+
+  // 连接 MQTT
+  const mqttCid = localStorage.getItem('mqttCid') || 'b448226a1b104435'
+  const mqttDeviceId = localStorage.getItem('mqttDeviceId') || 'D348009930TEST00WN19MNN2'
+  deviceStore.connectMqtt({ cid: mqttCid, deviceId: mqttDeviceId, secretKey: '' })
 })
 onUnmounted(() => {
   clearInterval(timer.value)
@@ -675,6 +670,7 @@ onUnmounted(() => {
     clearInterval(windTimer.value)
   }
   disconnectRadarWs()
+  deviceStore.disconnectMqtt()
 })
 const WindlessFeeling = ref(false)
 const getData = () => {

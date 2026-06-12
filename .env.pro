@@ -12,3 +12,8 @@ VITE_LOCAL_DEVICE_API_BASE = 'http://192.168.1.1:8089'
 
 VITE_RADAR_HTTP_BASE = 'https://mmradar.inchitech.com'
 
+# MQTT
+VITE_MQTT_URL = 'wss://miniapp-mqtt.mymlsoft.com:443/mqtt'
+VITE_MQTT_USERNAME = 'testWeixin'
+VITE_MQTT_PASSWORD='***'
+
