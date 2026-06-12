@@ -133,11 +133,21 @@ export const deviceStore = defineStore('deviceStore', {
 
       if (this.mqttConnection && this.mqttConnected) {
         // MQTT 通道：需要通过 JsFunction.toDevice 转换后再加密发送
-        const order = window.JsFunction?.toDevice(json)
-        if (order && this.secretKey) {
-          const encrypted = encryptMqttOrder(order, this.secretKey)
-          this.mqttConnection.sendCommand(encrypted)
+        if (!window.JsFunction) {
+          console.error('[deviceStore] window.JsFunction 未初始化，请确保 getOne() 已调用')
+          return
         }
+        if (!this.secretKey) {
+          console.error('[deviceStore] secretKey 为空，无法加密指令')
+          return
+        }
+        const order = window.JsFunction.toDevice(json)
+        if (!order) {
+          console.error('[deviceStore] toDevice 转换失败，原始指令:', json)
+          return
+        }
+        const encrypted = encryptMqttOrder(order, this.secretKey)
+        this.mqttConnection.sendCommand(encrypted)
       } else {
         // 原生桥接通道（保持原有逻辑）
         const order = JsFunction.toDevice(json)

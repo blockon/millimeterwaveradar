@@ -308,6 +308,7 @@ const connectMqttWithSn = (sn) => {
 const togglePower = () => {
   const newPower = devData.value.power ? 0 : 1
   console.log(`发送开关机指令: power=${newPower}`)
+  console.log('MQTT 连接状态:', deviceStore.mqttConnected, '密钥:', !!deviceStore.secretKey, 'JsFunction:', !!window.JsFunction)
   deviceStore.sendCommand({ method: 'command', payload: { power: newPower } })
 }
 
