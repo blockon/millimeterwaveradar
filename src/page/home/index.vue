@@ -731,6 +731,10 @@ const getData = () => {
     })
 }
 const js = new P_8009369()
+// 兜底：原生 App 流程未初始化 JsFunction 时，用通用协议解析器
+if (!window.JsFunction) {
+  window.JsFunction = js
+}
 // 将设备上报数据同步到 devData（HTTP 轮询和 MQTT 上报共用）
 const applyDeviceReport = (reported) => {
   if (!reported) return
