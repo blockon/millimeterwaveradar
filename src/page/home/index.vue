@@ -12,7 +12,6 @@
   <!-- 左边-空调摆风区域 -->
   <div class="home_page mid">
     <button class="radar_settings_btn" @click="showLoginPanel = true">设置</button>
-    <button class="power_test_btn" @click="togglePower">{{ devData.power ? '关机' : '开机' }}</button>
 
     <div v-if="showLoginPanel" class="radar_control_mask">
       <div class="radar_control_panel">
@@ -304,14 +303,6 @@ const connectMqttWithSn = (sn) => {
   deviceStore.connectMqtt({ cid: mqttCid, deviceId: sn, secretKey: '' })
   // 根据 SN 下载设备专属协议，替换兜底的 P_8009369
   deviceStore.loadProtocolBySn(sn)
-}
-
-// 开关机测试按钮
-const togglePower = () => {
-  const newPower = devData.value.power ? 0 : 1
-  console.log(`发送开关机指令: power=${newPower}`)
-  console.log('MQTT 连接状态:', deviceStore.mqttConnected, '密钥:', !!deviceStore.secretKey, 'JsFunction:', !!window.JsFunction)
-  deviceStore.sendCommand({ power: newPower })
 }
 
 const handleLoginAndConnect = async () => {
@@ -852,21 +843,6 @@ const getPeopleData = (arr) => {
   font-size: 30px;
   cursor: pointer;
 }
-.power_test_btn {
-  position: fixed;
-  left: 2.2%;
-  bottom: 5.2%;
-  z-index: 999;
-  width: 160px;
-  height: 68px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 194, 102, 0.5);
-  background: rgba(42, 20, 6, 0.75);
-  color: #ffd9a6;
-  font-size: 30px;
-  cursor: pointer;
-}
-
 .radar_control_mask {
   position: fixed;
   inset: 0;
