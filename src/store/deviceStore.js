@@ -39,6 +39,29 @@ export const deviceStore = defineStore('deviceStore', {
       })
     },
 
+    // 根据 SN 下载设备专属协议 JS（雷达测试场景用）
+    loadProtocolBySn(sn) {
+      if (!sn || sn.length < 10) {
+        console.warn('[deviceStore] SN 无效，无法下载协议:', sn)
+        return Promise.resolve()
+      }
+      const materialCode = sn.slice(3, 10)
+      console.log('[deviceStore] 根据 SN 下载协议, materialCode:', materialCode)
+      return commonApi.getJs(materialCode).then(res => {
+        try {
+          let Func = null  // eslint-disable-line
+          const _js = !!res.data.materialCodeJs ? res.data.materialCodeJs[0].js : res.data.typeJs[0].js
+          eval(`(function(){Func = ${_js.includes(materialCode) ? `P_${materialCode}` : 'FRIDGE'};${_js};})()`)
+          window.JsFunction = new Func()
+          console.log('[deviceStore] 设备协议下载成功，JsFunction 已更新')
+        } catch (e) {
+          console.error('[deviceStore] 协议 JS 解析失败:', e)
+        }
+      }).catch(e => {
+        console.error('[deviceStore] 协议下载失败，继续使用兜底 P_8009369:', e)
+      })
+    },
+
     /**
      * 连接 MQTT
      * @param {Object} params

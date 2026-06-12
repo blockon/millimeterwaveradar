@@ -302,6 +302,8 @@ const connectMqttWithSn = (sn) => {
   const mqttCid = localStorage.getItem('mqttCid') || 'b448226a1b104435'
   deviceStore.disconnectMqtt()
   deviceStore.connectMqtt({ cid: mqttCid, deviceId: sn, secretKey: '' })
+  // 根据 SN 下载设备专属协议，替换兜底的 P_8009369
+  deviceStore.loadProtocolBySn(sn)
 }
 
 // 开关机测试按钮
