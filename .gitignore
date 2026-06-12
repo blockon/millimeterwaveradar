@@ -30,3 +30,6 @@ www
 dist-electron-out/
 dist-electron/
 release/
+
+# Codegraph 索引
+.codegraph/
