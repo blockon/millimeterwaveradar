@@ -479,5 +479,6 @@ export function createMqttConnection({
     queryDeviceStatus,
     updateDeviceId,
     updateSecretKey,
+    fetchSecretKey,
   }
 }

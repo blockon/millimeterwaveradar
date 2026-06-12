@@ -61,11 +61,19 @@ export const deviceStore = defineStore('deviceStore', {
         cid,
         secretKey,
         deviceId,
-        onConnect: ({ isReconnect }) => {
+        onConnect: async ({ isReconnect }) => {
           this.mqttConnected = true
           this.mqttConnecting = false
           if (!isReconnect) {
             console.log('[deviceStore] MQTT 首次连接成功')
+          }
+          // 获取设备加密密钥，供后续发送指令使用
+          if (!this.secretKey && this.mqttConnection) {
+            const key = await this.mqttConnection.fetchSecretKey(deviceId)
+            if (key) {
+              this.secretKey = key
+              console.log('[deviceStore] 已获取设备密钥')
+            }
           }
         },
         onMessage: (parsed, reported) => {
