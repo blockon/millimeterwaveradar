@@ -47,7 +47,7 @@ export const deviceStore = defineStore('deviceStore', {
       }
       const materialCode = sn.slice(3, 10)
       // 云服务器地址，不走 window.baseURL（那是设备局域网 IP）
-      const cloudBase = (import.meta.env.VITE_BASE_GATEWAYURL || import.meta.env.VITE_BASE_URL || 'https://gateway.mymlsoft.com').replace(/\/$/, '')
+      const cloudBase = (import.meta.env.VITE_BASE_URL || import.meta.env.VITE_BASE_GATEWAYURL || 'https://superapp.mymlsoft.com').replace(/\/$/, '')
       // 兼容 VITE_BASE_URL 已包含 /saserver 路径的情况
       const url = cloudBase.endsWith('/saserver') ? `${cloudBase}/js/getOne` : `${cloudBase}/saserver/js/getOne`
       console.log('[deviceStore] 从云服务器下载协议, materialCode:', materialCode, 'url:', url)

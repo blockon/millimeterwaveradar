@@ -2,7 +2,8 @@
 NODE_ENV = 'pro'
 
 # base api
-VITE_BASE_URL = 'https://test-envsplit.mymlsoft.com/saserver/'
+VITE_BASE_URL = 'https://superapp.mymlsoft.com/'
+VITE_BASE_GATEWAYURL = 'https://gateway.mymlsoft.com'
 
 # 局域网设备 HTTP（/api/getData；Electron 与生产包按 IP 或映射解析 base）
 VITE_LOCAL_DEVICE_HOST = '192.168.1.1'
