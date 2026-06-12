@@ -19,7 +19,7 @@
         <div class="control_title">雷达连接设置</div>
         <input v-model.trim="radarLoginForm.username" class="control_input" placeholder="用户名/手机号" />
         <input v-model="radarLoginForm.password" class="control_input" type="password" placeholder="密码" />
-        <input v-model.trim="radarLoginForm.deviceId" class="control_input" placeholder="设备ID" />
+        <input v-model.trim="radarLoginForm.sn" class="control_input" placeholder="设备SN" />
         <div class="control_actions">
           <button class="control_btn" :disabled="loginLoading || radarConnecting" @click="handleLoginAndConnect">
             {{ loginLoading ? '登录中...' : radarConnecting ? '连接中...' : '登录并展示' }}
@@ -150,8 +150,9 @@ const roomConfig = ref({ width: 5, depth: 5 })
 const showLoginPanel = ref(false)
 const radarLoginForm = reactive({
   username: localStorage.getItem('radarLoginUsername') || '',
-  password: '',
-  deviceId: (localStorage.getItem('radarDeviceId') || import.meta.env.VITE_RADAR_DEVICE_ID || '').trim(),
+  password: localStorage.getItem('radarLoginPassword') || '',
+  sn: localStorage.getItem('radarMqttSn') || '',
+  deviceId: 'A1W2512K52T1ACKCVYTB',
 })
 const deviceLanHost = ref(
   (localStorage.getItem('deviceLanHost') || import.meta.env.VITE_LOCAL_DEVICE_HOST || '').trim()
@@ -290,9 +291,16 @@ const toSha256 = async (text) => {
 const restartRadarWs = () => {
   const deviceId = radarLoginForm.deviceId.trim()
   const token = sessionManager.getToken() || ''
-  localStorage.setItem('radarDeviceId', deviceId)
   disconnectRadarWs()
   connectRadarWs(deviceId, token)
+}
+
+// 用指定 SN 连接 MQTT（先断开旧连接）
+const connectMqttWithSn = (sn) => {
+  if (!sn) return
+  const mqttCid = localStorage.getItem('mqttCid') || 'b448226a1b104435'
+  deviceStore.disconnectMqtt()
+  deviceStore.connectMqtt({ cid: mqttCid, deviceId: sn, secretKey: '' })
 }
 
 const handleLoginAndConnect = async () => {
@@ -337,9 +345,14 @@ const handleLoginAndConnect = async () => {
         sessionId: user.sessionId,
       })
       localStorage.setItem('radarLoginUsername', username)
+      localStorage.setItem('radarLoginPassword', password)
+      const sn = radarLoginForm.sn.trim()
+      localStorage.setItem('radarMqttSn', sn)
       showToast({ message: '登录成功', position: 'bottom' })
       showLoginPanel.value = false
       restartRadarWs()
+      // 用新的 SN 重连 MQTT
+      connectMqttWithSn(sn)
     } else {
       radarError.value = data.message || '登录失败'
     }
@@ -659,10 +672,11 @@ onMounted(() => {
     // getData()
   }, 500)
 
-  // 连接 MQTT
-  const mqttCid = localStorage.getItem('mqttCid') || 'b448226a1b104435'
-  const mqttDeviceId = localStorage.getItem('mqttDeviceId') || 'D348009930TEST00WN19MNN2'
-  deviceStore.connectMqtt({ cid: mqttCid, deviceId: mqttDeviceId, secretKey: '' })
+  // 连接 MQTT（使用雷达设置中缓存的 SN）
+  const mqttSn = localStorage.getItem('radarMqttSn')
+  if (mqttSn) {
+    connectMqttWithSn(mqttSn)
+  }
 })
 onUnmounted(() => {
   clearInterval(timer.value)
@@ -708,61 +722,70 @@ const getData = () => {
     })
 }
 const js = new P_8009369()
+// 将设备上报数据同步到 devData（HTTP 轮询和 MQTT 上报共用）
+const applyDeviceReport = (reported) => {
+  if (!reported) return
+  console.log('设备状态上报----->', reported)
+  devData.value.right_swing_area =
+    reported?.actAnglePositionForHordirH2 !== undefined ? reported?.actAnglePositionForHordirH2 : devData.value.right_swing_area
+  devData.value.left_swing_area =
+    reported?.actAnglePositionForHordir !== undefined ? reported?.actAnglePositionForHordir : devData.value.left_swing_area
+  devData.value.speed = reported?.mark !== undefined ? reported?.mark : devData.value.speed
+  if (reported?.radarWindFollowPeople == 0 || reported?.radarWindAvoidPeople == 0 || reported?.radarPeopleNearSoftWind == 0) {
+    devData.value.swing_mode = 0
+  }
+  if (reported?.radarWindFollowPeople == 1 || reported?.radarWindAvoidPeople == 1 || reported?.radarPeopleNearSoftWind == 1) {
+    devData.value.swing_mode =
+      reported?.radarWindFollowPeople == 1 ? 1 : reported?.radarWindAvoidPeople == 1 ? 2 : reported?.radarPeopleNearSoftWind == 1 ? 3 : 0
+  }
+  devData.value.power = reported?.power !== undefined ? reported.power : devData.value.power
+  devData.value.set_temper = reported?.settemp !== undefined ? reported?.settemp : devData.value.set_temper
+  devData.value.id_num = reported?.radarTargetCount !== undefined ? reported?.radarTargetCount : devData.value.id_num
+  if (reported?.radarTargetCount == 1) {
+    getPeopleData([
+      {
+        id: reported?.radarTarget1Speed,
+        angel: reported?.radarTarget1Angle + 30, //角度，30-150°
+        distance: reported?.radarTarget1Distance * 10, //距离，单位厘米，0-350cm
+      },
+    ])
+  } else if (reported?.radarTargetCount == 2) {
+    getPeopleData([
+      {
+        id: reported?.radarTarget1Speed,
+        angel: reported?.radarTarget1Angle + 30, //角度，30-150°
+        distance: reported?.radarTarget1Distance * 10, //距离，单位厘米，0-350cm
+      },
+      {
+        id: reported?.radarTarget2Speed,
+        angel: reported?.radarTarget2Angle + 30, //角度，30-150°
+        distance: reported?.radarTarget2Distance * 10, //距离，单位厘米，0-350cm
+      },
+    ])
+  }
+  if (reported?.radarTargetCount == 0) {
+    devData.value.data_array = []
+  }
+  showfengYe()
+}
+
+// 监听 MQTT 上报的设备状态，自动同步到页面展示
+watch(
+  () => deviceStore.realtimeInfo,
+  (info) => {
+    if (info && Object.keys(info).length > 0) {
+      applyDeviceReport(info)
+    }
+  },
+  { deep: true }
+)
+
 const dealData = (data) => {
   let newStatusStr = js.fromDevice(data)
   try {
     let newStatus = JSON.parse(newStatusStr)
     const reported = newStatus.state.reported
-    if (reported) {
-      console.log('前端解析上报数据----->', reported)
-      console.log('前端解析上报数据风随radarWindFollowPeople----->', reported?.radarWindFollowPeople)
-      console.log('前端解析上报数据风避radarWindAvoidPeople----->', reported?.radarWindAvoidPeople)
-      console.log('前端解析上报数据人近radarPeopleNearSoftWind----->', reported?.radarPeopleNearSoftWind)
-      console.log('前端解析上报数据actualMark----->', reported?.actualMark)
-      devData.value.right_swing_area =
-        reported?.actAnglePositionForHordirH2 !== undefined ? reported?.actAnglePositionForHordirH2 : devData.value.right_swing_area
-      devData.value.left_swing_area =
-        reported?.actAnglePositionForHordir !== undefined ? reported?.actAnglePositionForHordir : devData.value.left_swing_area
-      devData.value.speed = reported?.actualMark !== undefined ? reported?.actualMark : devData.value.speed
-      if (reported?.radarWindFollowPeople == 0 || reported?.radarWindAvoidPeople == 0 || reported?.radarPeopleNearSoftWind == 0) {
-        devData.value.swing_mode = 0
-      }
-      if (reported?.radarWindFollowPeople == 1 || reported?.radarWindAvoidPeople == 1 || reported?.radarPeopleNearSoftWind == 1) {
-        devData.value.swing_mode =
-          reported?.radarWindFollowPeople == 1 ? 1 : reported?.radarWindAvoidPeople == 1 ? 2 : reported?.radarPeopleNearSoftWind == 1 ? 3 : 0
-      }
-      console.log('前端解析power', reported.power)
-      devData.value.power = reported?.power !== undefined ? reported.power : devData.value.power
-      devData.value.set_temper = reported?.settemp !== undefined ? reported?.settemp : devData.value.set_temper
-      devData.value.id_num = reported?.radarTargetCount !== undefined ? reported?.radarTargetCount : devData.value.id_num
-      if (reported?.radarTargetCount == 1) {
-        getPeopleData([
-          {
-            id: reported?.radarTarget1Speed,
-            angel: reported?.radarTarget1Angle + 30, //角度，30-150°
-            distance: reported?.radarTarget1Distance * 10, //距离，单位厘米，0-350cm
-          },
-        ])
-      } else if (reported?.radarTargetCount == 2) {
-        getPeopleData([
-          {
-            id: reported?.radarTarget1Speed,
-            angel: reported?.radarTarget1Angle + 30, //角度，30-150°
-            distance: reported?.radarTarget1Distance * 10, //距离，单位厘米，0-350cm
-          },
-          {
-            id: reported?.radarTarget2Speed,
-            angel: reported?.radarTarget2Angle + 30, //角度，30-150°
-            distance: reported?.radarTarget2Distance * 10, //距离，单位厘米，0-350cm
-          },
-        ])
-      }
-      if (reported?.radarTargetCount == 0) {
-        devData.value.data_array = []
-      }
-      showfengYe()
-      console.log('前端解析处理后的数据----->', devData.value)
-    }
+    applyDeviceReport(reported)
   } catch (e) {
     console.error(e, 'updateCurStatus，数据解析失败')
   }
