@@ -51,7 +51,7 @@
         <div v-if="devData.power">
           <img :src="windModeImgLeft" class="windAreaQuanYuBottom" />
           <img :src="windModeImgRight" class="windAreaQuanYuBottom" />
-          <div class="windModeText">{{ devData.swing_mode > 0 ? windModeArr[devData.swing_mode - 1] : '' }}</div>
+          <div class="windModeText">{{ radarActionLabel }}</div>
           <img src="@img/windModeBg.png" class="windModeBgImg" />
         </div>
         <!-- 网格区域 -->
@@ -122,6 +122,7 @@
       </div>
       <div class="tips">温馨提示：最多显示3个人</div>
     </div>
+
   </div>
 </template>
 
@@ -135,6 +136,7 @@ import sessionManager from '@/utils/login/sessionManager'
 import { binaryToString } from '@/utils/binaryToString'
 import { parseCompressedPcloud } from '@/utils/parse_compressed_pcloud'
 import { buildNearestRadarPersonRows, getFloorOriginXZFromRadarParams } from '@/utils/radarPersonMetrics'
+import { createShowroomScenario } from '@/utils/showroomScenario'
 import { showToast } from 'vant'
 
 let isReverse = {}
@@ -144,6 +146,7 @@ let isLoadFile = {}
 let range = {}
 const radarTrackIds = ref([])
 const latestKpts = ref([])
+const latestActions = ref([])
 const latestPointCloud = ref([])
 const radarParams = ref({})
 const roomConfig = ref({ width: 5, depth: 5 })
@@ -167,6 +170,7 @@ let radarInitTimeoutId = null
 const resetRadarState = () => {
   radarTrackIds.value = []
   latestKpts.value = []
+  latestActions.value = []
   latestPointCloud.value = []
   radarParams.value = {}
   roomConfig.value = { width: 5, depth: 5 }
@@ -182,11 +186,12 @@ const connectRadarWs = (deviceId, token = '') => {
   try {
     radarWs = new WebSocket(RADAR_WS_URL)
     radarWs.onopen = () => {
+      console.log(`[雷达] 已连接 (deviceId=${deviceId}, token=${token ? '有' : '无'})`)
       radarConnected.value = true
       radarConnecting.value = false
       const initData = {
         deviceID: deviceId,
-        type: '1',
+        type: '2',
         session: Date.now().toString(),
         content: 'start',
         startTime: '',
@@ -209,8 +214,13 @@ const connectRadarWs = (deviceId, token = '') => {
         const raw = event.data
         const str = typeof raw === 'string' ? raw : await binaryToString(raw)
         const data = JSON.parse(str)
+        // 只打印非 success 响应或有业务数据时
+        if (data.code !== 200 || data.track_id || data.kpts) {
+          console.log('[雷达] 消息:', JSON.stringify(data).substring(0, 300))
+        }
         if (Array.isArray(data.track_id)) radarTrackIds.value = data.track_id
         if (Array.isArray(data.kpts)) latestKpts.value = data.kpts
+        if (Array.isArray(data.action)) latestActions.value = data.action
         if (data.rawpc != null && data.rawpc !== '') {
           latestPointCloud.value = parseCompressedPcloud(data.rawpc, 5)
         } else {
@@ -236,7 +246,8 @@ const connectRadarWs = (deviceId, token = '') => {
         console.error('radar ws parse error:', error)
       }
     }
-    radarWs.onclose = () => {
+    radarWs.onclose = (event) => {
+      console.log('[雷达] onclose:', { code: event.code, reason: event.reason, wasClean: event.wasClean })
       if (radarInitTimeoutId) {
         clearTimeout(radarInitTimeoutId)
         radarInitTimeoutId = null
@@ -292,6 +303,7 @@ const restartRadarWs = () => {
   const deviceId = radarLoginForm.deviceId.trim()
   const token = sessionManager.getToken() || ''
   disconnectRadarWs()
+  console.log(`[雷达] 重连 (token=${token ? '有' : '无'})`)
   connectRadarWs(deviceId, token)
 }
 
@@ -334,6 +346,7 @@ const handleLoginAndConnect = async () => {
       }),
     })
     const data = await res.json()
+    console.log('[雷达] 登录结果:', data.code, data.message || '')
     if (data.code === 200) {
       localStorage.setItem('deviceLanHost', deviceLanHost.value.trim())
       const user = data.data || {}
@@ -596,6 +609,20 @@ const showfengYe = () => {
   }
 }
 
+// ==================== 计算属性 ====================
+
+const radarActionLabel = computed(() => {
+  const actions = latestActions.value
+  if (!actions || actions.length === 0) return ''
+  // 取主导动作（出现最多的）
+  const counter = new Map()
+  for (const a of actions) counter.set(a, (counter.get(a) || 0) + 1)
+  let dominant = 2, max = 0
+  for (const [a, c] of counter) { if (c > max) { max = c; dominant = a } }
+  const map = { 1: '跑步', 3: '挥手', 4: '静坐', 5: '起身', 6: '下蹲', 7: '跌倒', 8: '平躺' }
+  return map[dominant] || ''
+})
+
 const peopleBg = computed(() => {
   const mapper = {
     0: getImageUrl('noPeople.png'),
@@ -667,8 +694,12 @@ onMounted(() => {
   // startPlay();
   const hasToken = !!sessionManager.getToken()
   const hasDeviceId = !!radarLoginForm.deviceId.trim()
+  console.log('hasToken',hasToken,'hasDeviceId',hasDeviceId)
   if (hasToken && hasDeviceId) {
     connectRadarWs(radarLoginForm.deviceId.trim(), sessionManager.getToken() || '')
+  } else if (!hasToken && radarLoginForm.username && radarLoginForm.password) {
+    // 有缓存的账号密码但无 token，自动登录
+    handleLoginAndConnect()
   }
   timer.value = setInterval(() => {
     // getData()
@@ -784,6 +815,17 @@ watch(
     }
   },
   { deep: true }
+)
+
+// ==================== 展厅场景引擎 ====================
+const showroom = createShowroomScenario((cmd) => deviceStore.sendCommand(cmd))
+
+/** 监听雷达 action 变化，触发展厅场景联动 */
+watch(
+  () => latestActions.value,
+  (actions) => {
+    showroom.handleActions(actions)
+  },
 )
 
 const dealData = (data) => {
