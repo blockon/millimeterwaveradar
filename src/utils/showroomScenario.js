@@ -5,16 +5,17 @@
  *   4 = 静坐, 8 = 平躺, 3 = 挥手(挥拳), 6 = 下蹲, 5 = 起身
  *
  * 不做: 大屏弹窗
- * 语音: 占位 (voiceText 已存好, 后续通过 MQTT 发送语音播报指令)
+ *
+ * 两条独立通道:
+ *   sendCommand  → 空调透传协议 (JsFunction.toDevice + encryptMqttOrder)
+ *   sendBroadcast → 语音播报 ({ broadcastid: "xx" } 加密后 MQTT 发送)
  *
  * 用法:
- *   import { createShowroomScenario } from '@/utils/showroomScenario'
- *   const scenario = createShowroomScenario((cmd) => deviceStore.sendCommand(cmd))
- *   // 雷达数据到达时:
- *   scenario.handleActions(latestActions.value)
- *   // 读取当前场景/语音:
- *   scenario.currentScenario  // ref
- *   scenario.voiceText        // ref
+ *   const showroom = createShowroomScenario(
+ *     (cmd) => deviceStore.sendCommand(cmd),
+ *     (json) => deviceStore.sendBroadcast(json),
+ *   )
+ *   showroom.handleActions(latestActions.value)
  */
 
 import { ref } from 'vue'
@@ -54,7 +55,7 @@ export const SCENARIO_AC_COMMANDS = {
   },
 }
 
-/** 场景 → 语音播报文本 (占位, 后续通过 MQTT 发送) */
+/** 场景 → 语音播报文本 */
 export const SCENARIO_VOICE = {
   sitting: '检测到您当前处于静坐状态，空调进入"恒温低风"模式。',
   lying: '已开启睡眠模式，我将安静地为您送风。',
@@ -63,24 +64,35 @@ export const SCENARIO_VOICE = {
   standing: '检测到您处于"起身"姿态，为您避开直吹的冷风。',
 }
 
+/** 场景 → 播报 ID (占位，后续确定) */
+export const SCENARIO_BROADCAST_ID = {
+  sitting: 'sit_001',
+  lying: 'lie_001',
+  waving: 'wave_001',
+  squatting: 'squat_001',
+  standing: 'stand_001',
+}
+
 /** 场景变化去抖 (ms) — 同一场景变化需间隔这个时间才重新发指令 */
 const DEBOUNCE_MS = 2500
 
 // ==================== 场景管理器 ====================
 
 /**
- * @param {Function} sendCommand - deviceStore.sendCommand
+ * @param {Function} sendCommand  - AC 控制指令回调, 签名: (cmd: Object) => void
+ * @param {Function} [sendBroadcast] - 语音播报回调, 签名: (json: { broadcastid: string }) => void
  * @param {Object} [options]
  * @param {number} [options.debounceMs=2500]
  */
-export function createShowroomScenario(sendCommand, options = {}) {
+export function createShowroomScenario(sendCommand, sendBroadcast, options = {}) {
   const debounceMs = options.debounceMs ?? DEBOUNCE_MS
 
-  const currentScenario = ref(null)  // 当前场景名
-  const voiceText = ref('')          // 语音文本占位
+  const currentScenario = ref(null)
+  const voiceText = ref('')
   let lastScenario = null
   let lastScenarioTime = 0
   let lastSentCmdKey = null
+  let lastBroadcastId = null
 
   /**
    * 从雷达 action 数组中取主导动作码
@@ -115,18 +127,25 @@ export function createShowroomScenario(sendCommand, options = {}) {
     voiceText.value = SCENARIO_VOICE[scenario] || ''
     console.log(`[展厅] 场景: ${scenario} | 语音: ${voiceText.value}`)
 
-    // 空调指令
+    // 空调指令 (透传协议)
     const cmd = SCENARIO_AC_COMMANDS[scenario]
-    if (!cmd || !sendCommand) return
-
-    const cmdKey = JSON.stringify(cmd)
-    if (cmdKey === lastSentCmdKey) {
-      console.log('[展厅] 指令未变化，跳过')
-      return
+    if (cmd && sendCommand) {
+      const cmdKey = JSON.stringify(cmd)
+      if (cmdKey !== lastSentCmdKey) {
+        lastSentCmdKey = cmdKey
+        console.log('[展厅] → AC:', cmd)
+        sendCommand(cmd)
+      }
     }
-    lastSentCmdKey = cmdKey
-    console.log('[展厅] → AC:', cmd)
-    sendCommand(cmd)
+
+    // 语音播报 (广播通道，与控制指令分开发送)
+    const broadcastId = SCENARIO_BROADCAST_ID[scenario]
+    if (broadcastId && sendBroadcast && broadcastId !== lastBroadcastId) {
+      lastBroadcastId = broadcastId
+      const msg = { broadcastid: broadcastId }
+      console.log('[展厅] → 播报:', msg)
+      sendBroadcast(msg)
+    }
   }
 
   return { currentScenario, voiceText, handleActions }

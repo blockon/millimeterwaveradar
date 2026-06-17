@@ -155,6 +155,25 @@ export function encryptMqttOrder(order, secretKey) {
 }
 
 /**
+ * 加密广播消息（语音播报等），输入为 JSON 字符串
+ * 与 encryptMqttOrder 的区别：不对 hex 协议做校验和包装，直接 AES 加密 UTF-8 文本
+ * @param {string|Object} json - JSON 字符串或对象
+ * @param {string} secretKey - AES 密钥（十六进制）
+ * @returns {string} Base64 编码的密文
+ */
+export function encryptBroadcast(json, secretKey) {
+  const jsonStr = typeof json === 'string' ? json : JSON.stringify(json)
+  const key = CryptoJS.enc.Hex.parse(secretKey)
+  const rawdata = CryptoJS.enc.Utf8.parse(jsonStr)
+  const encrypted = CryptoJS.AES.encrypt(rawdata, key, {
+    iv: key,
+    mode: CryptoJS.mode.CBC,
+    padding: CryptoJS.pad.Pkcs7,
+  })
+  return CryptoJS.enc.Base64.stringify(encrypted.ciphertext)
+}
+
+/**
  * 解密 MQTT 消息
  * @param {string} str - Base64 编码的密文
  * @param {string} secretKey - AES 密钥（十六进制）
@@ -426,6 +445,25 @@ export function createMqttConnection({
     console.log(`[MQTT] 已发送指令到 d/${_deviceId}/i`)
   }
 
+  /**
+   * 发送广播消息（语音播报等），JSON 加密后通过 MQTT 发送
+   * @param {Object} json - 广播内容，如 { broadcastid: "xx" }
+   */
+  function sendBroadcast(json) {
+    if (!client || !client.connected) {
+      console.warn('[MQTT] 未连接，无法发送广播')
+      return
+    }
+    if (!_secretKey) {
+      console.warn('[MQTT] 无密钥，无法加密广播')
+      return
+    }
+    const encrypted = encryptBroadcast(json, _secretKey)
+    const payload = `${String.fromCharCode(_cid.length)}${_cid}${encrypted}`
+    client.publish(`d/${_deviceId}/i`, payload)
+    console.log(`[MQTT] 已发送广播:`, json, `→ 密文(前40): ${encrypted.slice(0, 40)}... → d/${_deviceId}/i`)
+  }
+
   /** 发送查询命令，触发设备上报状态 */
   function queryDeviceStatus() {
     if (!client || !client.connected) {
@@ -476,6 +514,7 @@ export function createMqttConnection({
     get client() { return client },
     disconnect,
     sendCommand,
+    sendBroadcast,
     queryDeviceStatus,
     updateDeviceId,
     updateSecretKey,

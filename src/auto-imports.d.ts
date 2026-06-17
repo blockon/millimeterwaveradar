@@ -8,6 +8,7 @@ declare global {
   const NativeActions: typeof import('./utils/nativeActions.js')['NativeActions']
   const P_8009369: typeof import('./utils/analysis.js')['P_8009369']
   const SCENARIO_AC_COMMANDS: typeof import('./utils/showroomScenario.js')['SCENARIO_AC_COMMANDS']
+  const SCENARIO_BROADCAST_ID: typeof import('./utils/showroomScenario.js')['SCENARIO_BROADCAST_ID']
   const SCENARIO_VOICE: typeof import('./utils/showroomScenario.js')['SCENARIO_VOICE']
   const Tools: typeof import('./utils/tools.js')['Tools']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
@@ -26,6 +27,7 @@ declare global {
   const defineStore: typeof import('pinia')['defineStore']
   const deviceStore: typeof import('./store/deviceStore.js')['deviceStore']
   const effectScope: typeof import('vue')['effectScope']
+  const encryptBroadcast: typeof import('./utils/mqttService.js')['encryptBroadcast']
   const encryptMqttOrder: typeof import('./utils/mqttService.js')['encryptMqttOrder']
   const formatTrackIdForHeatItem: typeof import('./utils/radarPersonMetrics.js')['formatTrackIdForHeatItem']
   const getActivePinia: typeof import('pinia')['getActivePinia']
@@ -115,6 +117,7 @@ declare module 'vue' {
     readonly NativeActions: UnwrapRef<typeof import('./utils/nativeActions.js')['NativeActions']>
     readonly P_8009369: UnwrapRef<typeof import('./utils/analysis.js')['P_8009369']>
     readonly SCENARIO_AC_COMMANDS: UnwrapRef<typeof import('./utils/showroomScenario.js')['SCENARIO_AC_COMMANDS']>
+    readonly SCENARIO_BROADCAST_ID: UnwrapRef<typeof import('./utils/showroomScenario.js')['SCENARIO_BROADCAST_ID']>
     readonly SCENARIO_VOICE: UnwrapRef<typeof import('./utils/showroomScenario.js')['SCENARIO_VOICE']>
     readonly Tools: UnwrapRef<typeof import('./utils/tools.js')['Tools']>
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>
@@ -133,6 +136,7 @@ declare module 'vue' {
     readonly defineStore: UnwrapRef<typeof import('pinia')['defineStore']>
     readonly deviceStore: UnwrapRef<typeof import('./store/deviceStore.js')['deviceStore']>
     readonly effectScope: UnwrapRef<typeof import('vue')['effectScope']>
+    readonly encryptBroadcast: UnwrapRef<typeof import('./utils/mqttService.js')['encryptBroadcast']>
     readonly encryptMqttOrder: UnwrapRef<typeof import('./utils/mqttService.js')['encryptMqttOrder']>
     readonly formatTrackIdForHeatItem: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['formatTrackIdForHeatItem']>
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>

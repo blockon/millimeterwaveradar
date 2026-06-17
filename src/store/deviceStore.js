@@ -210,6 +210,18 @@ export const deviceStore = defineStore('deviceStore', {
       }
     },
 
+    /**
+     * 通过 MQTT 发送语音播报等广播消息
+     * @param {Object} json - 广播内容，如 { broadcastid: "xx" }
+     */
+    sendBroadcast(json) {
+      if (this.mqttConnection && this.mqttConnected) {
+        this.mqttConnection.sendBroadcast(json)
+      } else {
+        console.warn('[deviceStore] MQTT 未连接，无法发送广播')
+      }
+    },
+
     // 兼容旧调用（CommonSeting.vue 用的是 sendComand）
     sendComand(command) { return this.sendCommand(command) },
   },

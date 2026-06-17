@@ -818,7 +818,10 @@ watch(
 )
 
 // ==================== 展厅场景引擎 ====================
-const showroom = createShowroomScenario((cmd) => deviceStore.sendCommand(cmd))
+const showroom = createShowroomScenario(
+  (cmd) => deviceStore.sendCommand(cmd),
+  (json) => deviceStore.sendBroadcast(json),
+)
 
 /** 监听雷达 action 变化，触发展厅场景联动 */
 watch(
