@@ -155,21 +155,35 @@ export function encryptMqttOrder(order, secretKey) {
 }
 
 /**
- * 加密广播消息（语音播报等），输入为 JSON 字符串
- * 与 encryptMqttOrder 的区别：不对 hex 协议做校验和包装，直接 AES 加密 UTF-8 文本
+ * 加密广播消息（语音播报等），与 encryptMqttOrder 完全一致的流程
+ * JSON → hex 字节 → 校验和 → AES-CBC 加密 → Base64
  * @param {string|Object} json - JSON 字符串或对象
  * @param {string} secretKey - AES 密钥（十六进制）
  * @returns {string} Base64 编码的密文
  */
 export function encryptBroadcast(json, secretKey) {
   const jsonStr = typeof json === 'string' ? json : JSON.stringify(json)
+  console.log('[MQTT] encryptBroadcast 密钥长度:', secretKey?.length, '前10字符:', secretKey?.slice(0, 10), '是否全hex:', /^[0-9a-fA-F]+$/.test(secretKey || ''))
+
+  // 和 encryptMqttOrder 完全一致：JSON → hex → 加校验和 → AES 加密
+  let checkSum = jsonStr.split('').reduce((acc, cur) => acc + cur.charCodeAt(), 0)
+  checkSum = checkSum & 0xff
+  checkSum = toHexStr(checkSum)
+
+  const buffer = stringToBytesEnd(jsonStr, false)
+  const uint8 = new Uint8Array(buffer)
+  const hexStr = Array.prototype.map.call(uint8, (i) => toHexStr(i)).join('')
+
+  const finalOrder = hexStr + checkSum
+
   const key = CryptoJS.enc.Hex.parse(secretKey)
-  const rawdata = CryptoJS.enc.Utf8.parse(jsonStr)
+  const rawdata = CryptoJS.enc.Hex.parse(finalOrder)
   const encrypted = CryptoJS.AES.encrypt(rawdata, key, {
     iv: key,
     mode: CryptoJS.mode.CBC,
     padding: CryptoJS.pad.Pkcs7,
   })
+
   return CryptoJS.enc.Base64.stringify(encrypted.ciphertext)
 }
 
@@ -252,7 +266,7 @@ export function createMqttConnection({
       const key = json.data?.svalue
       if (key) {
         _keyCache[sn] = key
-        console.log(`[MQTT] 获取密钥: ${sn}`)
+        console.log(`[MQTT] 获取密钥: ${sn}`, '长度:', key.length, '前10字符:', key.slice(0, 10))
         // 如果是目标设备，同步到 _secretKey 供查询命令加密用
         if (sn === _deviceId) _secretKey = key
       }

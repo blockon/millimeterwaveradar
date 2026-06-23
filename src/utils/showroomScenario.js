@@ -8,7 +8,7 @@
  *
  * 两条独立通道:
  *   sendCommand  → 空调透传协议 (JsFunction.toDevice + encryptMqttOrder)
- *   sendBroadcast → 语音播报 ({ broadcastid: "xx" } 加密后 MQTT 发送)
+ *   sendBroadcast → 语音播报 ({ broadcastid: number } 加密后 MQTT 发送)
  *
  * 用法:
  *   const showroom = createShowroomScenario(
@@ -66,11 +66,11 @@ export const SCENARIO_VOICE = {
 
 /** 场景 → 播报 ID */
 export const SCENARIO_BROADCAST_ID = {
-  sitting: '65003',    // 静坐 → 恒温低风
-  lying: '65004',      // 平躺 → 睡眠模式
-  waving: '65005',     // 挥手 → 加快空气循环
-  squatting: '65006',  // 下蹲 → 风避人
-  standing: '65007',   // 起身 → 风避人
+  sitting: 65003,    // 静坐 → 恒温低风
+  lying: 65004,      // 平躺 → 睡眠模式
+  waving: 65005,     // 挥手 → 加快空气循环
+  squatting: 65006,  // 下蹲 → 风避人
+  standing: 65007,   // 起身 → 风避人
 }
 
 /** 场景变化去抖 (ms) — 同一场景变化需间隔这个时间才重新发指令 */
@@ -80,7 +80,7 @@ const DEBOUNCE_MS = 2500
 
 /**
  * @param {Function} sendCommand  - AC 控制指令回调, 签名: (cmd: Object) => void
- * @param {Function} [sendBroadcast] - 语音播报回调, 签名: (json: { broadcastid: string }) => void
+ * @param {Function} [sendBroadcast] - 语音播报回调, 签名: (json: { broadcastid: number }) => void
  * @param {Object} [options]
  * @param {number} [options.debounceMs=2500]
  */

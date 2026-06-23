@@ -214,7 +214,7 @@ export const deviceStore = defineStore('deviceStore', {
 
     /**
      * 通过 MQTT 发送语音播报等广播消息
-     * @param {Object} json - 广播内容，如 { broadcastid: "xx" }
+     * @param {Object} json - 广播内容，如 { broadcastid: number }
      */
     sendBroadcast(json) {
       if (this.mqttConnection && this.mqttConnected) {
