@@ -160,12 +160,14 @@ export const deviceStore = defineStore('deviceStore', {
      * @param {Object} command - 控制指令对象（会被 JSON.stringify 后加密）
      */
     sendCommand(command) {
-      // 控制消息主体
+      // 控制消息主体 (协议要求 payload + source)
       const json = {
+        method: 'control',
         version: 1,
         commandId: 256,
         timestamp: new Date().getTime(),
-        ...command
+        source: 3,
+        payload: command,
       }
 
       if (this.mqttConnection && this.mqttConnected) {
@@ -178,7 +180,7 @@ export const deviceStore = defineStore('deviceStore', {
           console.error('[deviceStore] secretKey 为空，无法加密指令')
           return
         }
-        let order = window.JsFunction.toDevice(json)
+        const order = window.JsFunction.toDevice(json)
         if (!order) {
           console.error('[deviceStore] toDevice 转换失败，原始指令:', json)
           return
