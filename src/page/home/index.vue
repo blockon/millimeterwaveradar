@@ -1472,7 +1472,7 @@ const getPeopleData = (arr) => {
 
   .heat_list {
     position: fixed;
-    top: 47%;
+    top: 52%;
 
     .heat_item {
       width: 1000px;
