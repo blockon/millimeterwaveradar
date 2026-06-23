@@ -64,13 +64,13 @@ export const SCENARIO_VOICE = {
   standing: '检测到您处于"起身"姿态，为您避开直吹的冷风。',
 }
 
-/** 场景 → 播报 ID (占位，后续确定) */
+/** 场景 → 播报 ID */
 export const SCENARIO_BROADCAST_ID = {
-  sitting: 'sit_001',
-  lying: 'lie_001',
-  waving: 'wave_001',
-  squatting: 'squat_001',
-  standing: 'stand_001',
+  sitting: '65003',    // 静坐 → 恒温低风
+  lying: '65004',      // 平躺 → 睡眠模式
+  waving: '65005',     // 挥手 → 加快空气循环
+  squatting: '65006',  // 下蹲 → 风避人
+  standing: '65007',   // 起身 → 风避人
 }
 
 /** 场景变化去抖 (ms) — 同一场景变化需间隔这个时间才重新发指令 */
