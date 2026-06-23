@@ -1,10 +1,5 @@
-export function useViteDevProxy() {
-  return (
-    import.meta.env.DEV &&
-    typeof window !== 'undefined' &&
-    window.location.protocol !== 'file:'
-  )
-}
+// 构建时 import.meta.env.DEV 被 Vite 替换为 false，esbuild 可正确 tree-shake
+export const IS_DEV_PROXY = import.meta.env.DEV
 
 function parseDeviceApiBaseMap() {
   const raw = import.meta.env.VITE_DEVICE_API_BASE_MAP
@@ -35,6 +30,6 @@ export function resolveDeviceApiBase(deviceIp) {
 }
 
 export function getDataHttpBase(deviceLanHost) {
-  if (useViteDevProxy()) return ''
+  if (IS_DEV_PROXY) return ''
   return resolveDeviceApiBase(deviceLanHost)
 }

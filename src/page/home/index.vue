@@ -12,6 +12,7 @@
   <!-- 左边-空调摆风区域 -->
   <div class="home_page mid">
     <button class="radar_settings_btn" @click="showLoginPanel = true">设置</button>
+    <button class="radar_test_btn" @click="showTestPanel = !showTestPanel">测试</button>
 
     <div v-if="showLoginPanel" class="radar_control_mask">
       <div class="radar_control_panel">
@@ -27,6 +28,24 @@
         </div>
         <div class="control_status" :class="{ error: radarError }">
           {{ radarError || (radarConnected ? '已连接，数据实时展示中' : '未连接') }}
+        </div>
+      </div>
+    </div>
+
+    <!-- 指令测试面板 -->
+    <div v-if="showTestPanel" class="radar_control_mask">
+      <div class="radar_control_panel test_panel">
+        <button class="control_close_btn" @click="showTestPanel = false">×</button>
+        <div class="control_title">指令测试</div>
+        <div class="test_status" :class="{ connected: mqttConnected }">
+          MQTT: {{ mqttConnected ? '已连接' : '未连接' }}
+        </div>
+        <div class="test_buttons">
+          <div v-for="item in testScenarios" :key="item.key" class="test_row">
+            <span class="test_label">{{ item.label }}</span>
+            <span class="test_hint">{{ item.hint }}</span>
+            <button class="test_send_btn" @click="handleTestSend(item.key)">发送</button>
+          </div>
         </div>
       </div>
     </div>
@@ -137,6 +156,7 @@ import { binaryToString } from '@/utils/binaryToString'
 import { parseCompressedPcloud } from '@/utils/parse_compressed_pcloud'
 import { buildNearestRadarPersonRows, getFloorOriginXZFromRadarParams } from '@/utils/radarPersonMetrics'
 import { createShowroomScenario } from '@/utils/showroomScenario'
+import { CapacitorHttp } from '@capacitor/core'
 import { showToast } from 'vant'
 
 let isReverse = {}
@@ -151,10 +171,11 @@ const latestPointCloud = ref([])
 const radarParams = ref({})
 const roomConfig = ref({ width: 5, depth: 5 })
 const showLoginPanel = ref(false)
+const showTestPanel = ref(false)
 const radarLoginForm = reactive({
-  username: localStorage.getItem('radarLoginUsername') || '',
-  password: localStorage.getItem('radarLoginPassword') || '',
-  sn: localStorage.getItem('radarMqttSn') || '',
+  username: localStorage.getItem('radarLoginUsername') || 'taoyiping',
+  password: localStorage.getItem('radarLoginPassword') || 'typ19951028',
+  sn: localStorage.getItem('radarMqttSn') || 'D348009930TEST00WN19MNN2',
   deviceId: 'A1W2512K52T1ACKCVYTB',
 })
 const deviceLanHost = ref(
@@ -383,15 +404,15 @@ const handleLoginAndConnect = async () => {
   radarError.value = ''
   try {
     const hashedPassword = await toSha256(password)
-    const res = await fetch(AUTH_API.LOGIN_PASSWORD, {
+    console.log('[雷达] 登录请求 URL:', AUTH_API.LOGIN_PASSWORD)
+    const res = await CapacitorHttp.request({
       method: 'POST',
+      url: AUTH_API.LOGIN_PASSWORD,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phone: username,
-        password: hashedPassword,
-      }),
+      data: { phone: username, password: hashedPassword },
     })
-    const data = await res.json()
+    console.log('[雷达] 登录响应 status:', res.status, JSON.stringify(res.data).substring(0, 200))
+    const data = res.data
     console.log('[雷达] 登录结果:', data.code, data.message || '')
     if (data.code === 200) {
       localStorage.setItem('deviceLanHost', deviceLanHost.value.trim())
@@ -862,6 +883,31 @@ watch(
   },
   { deep: true }
 )
+
+// ==================== 测试面板 ====================
+
+const mqttConnected = computed(() => deviceStore.mqttConnected)
+
+const testScenarios = [
+  { key: 'sitting',  label: '静坐', hint: 'AC: 26°C低风 | 播报:65003' },
+  { key: 'lying',    label: '平躺', hint: 'AC: 27°C微风 | 播报:65004' },
+  { key: 'waving',   label: '挥手', hint: 'AC: 高风循环 | 播报:65005' },
+  { key: 'squatting', label: '下蹲', hint: 'AC: 风避人 | 播报:65006' },
+  { key: 'standing', label: '起身', hint: 'AC: 风避人 | 播报:65007' },
+]
+
+function handleTestSend(scenario) {
+  const cmd = SCENARIO_AC_COMMANDS[scenario]
+  const broadcastId = SCENARIO_BROADCAST_ID[scenario]
+  if (cmd) {
+    deviceStore.sendCommand(cmd)
+    console.log('[测试] AC指令:', scenario, cmd)
+  }
+  if (broadcastId) {
+    deviceStore.sendBroadcast({ broadcastid: broadcastId })
+    console.log('[测试] 播报:', scenario, broadcastId)
+  }
+}
 
 // ==================== 展厅场景引擎 ====================
 const showroom = createShowroomScenario(
@@ -1488,5 +1534,85 @@ const getPeopleData = (arr) => {
 }
 .noScan {
   animation: none !important;
+}
+
+/* 测试面板 */
+.radar_test_btn {
+  position: fixed;
+  left: 2.2%;
+  bottom: calc(2.2% + 78px);
+  z-index: 999;
+  width: 160px;
+  height: 68px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 200, 50, 0.5);
+  background: rgba(42, 31, 6, 0.75);
+  color: #ffd940;
+  font-size: 30px;
+  cursor: pointer;
+}
+
+.test_panel {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.test_status {
+  font-size: 28px;
+  color: #ff6b6b;
+  text-align: center;
+  margin-bottom: 30px;
+}
+.test_status.connected {
+  color: #6bff9e;
+}
+
+.test_buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.test_row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(1, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.test_label {
+  width: 80px;
+  font-size: 32px;
+  color: #c2f9ff;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.test_hint {
+  flex: 1;
+  font-size: 24px;
+  color: rgba(194, 249, 255, 0.65);
+}
+
+.test_send_btn {
+  width: 120px;
+  height: 60px;
+  border-radius: 8px;
+  border: 1px solid rgba(1, 255, 255, 0.5);
+  background: rgba(1, 255, 255, 0.15);
+  color: #01ffff;
+  font-size: 28px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.test_send_btn:hover {
+  background: rgba(1, 255, 255, 0.3);
+}
+.test_send_btn:active {
+  background: rgba(1, 255, 255, 0.5);
 }
 </style>

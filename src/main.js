@@ -7,6 +7,12 @@ import vant from 'vant';
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
+// 非生产环境初始化 vConsole
+if (typeof VConsole !== 'undefined') {
+  new VConsole()
+  console.log('[vConsole] 已启动')
+}
+
 const app = createApp(App)
 
 const pinia = createPinia() // pinia相关,集中状态管理插件（vuex升级版）

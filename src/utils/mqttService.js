@@ -273,6 +273,7 @@ export function createMqttConnection({
     clientId: `a1:${_cid}weixn`,
     username,
     password,
+    clean: true,
     reconnectPeriod: 1000,
     connectTimeout: 15 * 1000,
   }
