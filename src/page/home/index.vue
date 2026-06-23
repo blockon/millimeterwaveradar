@@ -166,6 +166,11 @@ const radarError = ref('')
 const loginLoading = ref(false)
 let radarWs = null
 let radarInitTimeoutId = null
+let radarReconnectTimer = null
+let radarReconnectAttempt = 0
+let radarManualDisconnect = false
+const MAX_RECONNECT_ATTEMPTS = 10
+const RECONNECT_BASE_DELAY = 1000
 
 const resetRadarState = () => {
   radarTrackIds.value = []
@@ -181,12 +186,20 @@ const connectRadarWs = (deviceId, token = '') => {
     radarError.value = '请输入设备ID'
     return
   }
+  // 清理旧连接
+  if (radarWs) {
+    radarWs.onclose = null
+    radarWs.close()
+    radarWs = null
+  }
+  radarManualDisconnect = false
   radarConnecting.value = true
   radarError.value = ''
   try {
     radarWs = new WebSocket(RADAR_WS_URL)
     radarWs.onopen = () => {
       console.log(`[雷达] 已连接 (deviceId=${deviceId}, token=${token ? '有' : '无'})`)
+      radarReconnectAttempt = 0
       radarConnected.value = true
       radarConnecting.value = false
       const initData = {
@@ -216,11 +229,12 @@ const connectRadarWs = (deviceId, token = '') => {
         const data = JSON.parse(str)
         // 只打印非 success 响应或有业务数据时
         if (data.code !== 200 || data.track_id || data.kpts) {
-          console.log('[雷达] 消息:', JSON.stringify(data).substring(0, 300))
+          // console.log('[雷达] 消息:', JSON.stringify(data).substring(0, 300))
         }
+        console.log('[雷达] action:', JSON.stringify(data.action))
         if (Array.isArray(data.track_id)) radarTrackIds.value = data.track_id
         if (Array.isArray(data.kpts)) latestKpts.value = data.kpts
-        if (Array.isArray(data.action)) latestActions.value = data.action
+        if (Array.isArray(data.action) && data.action.length > 0) latestActions.value = data.action
         if (data.rawpc != null && data.rawpc !== '') {
           latestPointCloud.value = parseCompressedPcloud(data.rawpc, 5)
         } else {
@@ -256,27 +270,40 @@ const connectRadarWs = (deviceId, token = '') => {
       radarConnected.value = false
       radarConnecting.value = false
       resetRadarState()
+      // 非主动断开则自动重连
+      if (!radarManualDisconnect) {
+        scheduleReconnect()
+      }
     }
     radarWs.onerror = () => {
-      radarError.value = '雷达连接失败'
-      radarConnected.value = false
-      radarConnecting.value = false
-      resetRadarState()
+      console.warn('[雷达] onerror')
+      // 不在此处 resetRadarState，onclose 会随后触发并处理
     }
   } catch (error) {
     console.error('radar ws connect error:', error)
     radarError.value = '雷达连接异常'
     radarConnected.value = false
     radarConnecting.value = false
+    // 构造阶段失败也触发重连
+    if (!radarManualDisconnect) {
+      scheduleReconnect()
+    }
   }
 }
 
 const disconnectRadarWs = () => {
+  radarManualDisconnect = true
+  if (radarReconnectTimer) {
+    clearTimeout(radarReconnectTimer)
+    radarReconnectTimer = null
+  }
+  radarReconnectAttempt = 0
   if (radarInitTimeoutId) {
     clearTimeout(radarInitTimeoutId)
     radarInitTimeoutId = null
   }
   if (radarWs) {
+    radarWs.onclose = null   // 先移除回调，避免异步触发重连
     radarWs.close()
     radarWs = null
   }
@@ -297,6 +324,25 @@ const toSha256 = async (text) => {
   // 非安全上下文（如 HTTP 局域网访问）下使用纯 JS 后备方案
   const { sha256 } = await import('js-sha256')
   return sha256(text)
+}
+
+const scheduleReconnect = () => {
+  if (radarReconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
+    radarError.value = '雷达重连失败，已达最大重试次数'
+    console.warn('[雷达] 重连已达上限，停止重连')
+    return
+  }
+  const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, radarReconnectAttempt), 30000)
+  radarReconnectAttempt++
+  console.log(`[雷达] 将在 ${delay}ms 后第 ${radarReconnectAttempt} 次重连...`)
+  radarReconnectTimer = setTimeout(() => {
+    radarReconnectTimer = null
+    const deviceId = radarLoginForm.deviceId.trim()
+    const token = sessionManager.getToken() || ''
+    if (deviceId) {
+      connectRadarWs(deviceId, token)
+    }
+  }, delay)
 }
 
 const restartRadarWs = () => {
@@ -619,7 +665,7 @@ const radarActionLabel = computed(() => {
   for (const a of actions) counter.set(a, (counter.get(a) || 0) + 1)
   let dominant = 2, max = 0
   for (const [a, c] of counter) { if (c > max) { max = c; dominant = a } }
-  const map = { 1: '跑步', 3: '挥手', 4: '静坐', 5: '起身', 6: '下蹲', 7: '跌倒', 8: '平躺' }
+  const map = { 0: '走动', 1: '跑步', 2: '站着', 3: '挥手', 4: '静坐', 5: '起身', 6: '下蹲', 7: '跌倒', 8: '平躺' }
   return map[dominant] || ''
 })
 
@@ -1115,14 +1161,14 @@ const getPeopleData = (arr) => {
       font-weight: 600;
       color: #01ffff;
       z-index: 102;
-      top: 78%;
+      top: 80%;
     }
     .windModeBgImg {
       width: 966px;
       position: absolute;
       transform: translateX(-50%);
       left: 50%;
-      top: 83%;
+      top: 85%;
     }
     .people_grid_area {
       position: absolute;
