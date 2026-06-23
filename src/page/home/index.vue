@@ -156,7 +156,7 @@ import { binaryToString } from '@/utils/binaryToString'
 import { parseCompressedPcloud } from '@/utils/parse_compressed_pcloud'
 import { buildNearestRadarPersonRows, getFloorOriginXZFromRadarParams } from '@/utils/radarPersonMetrics'
 import { createShowroomScenario } from '@/utils/showroomScenario'
-import { CapacitorHttp } from '@capacitor/core'
+import { Capacitor, CapacitorHttp } from '@capacitor/core'
 import { showToast } from 'vant'
 
 let isReverse = {}
@@ -404,13 +404,28 @@ const handleLoginAndConnect = async () => {
   radarError.value = ''
   try {
     const hashedPassword = await toSha256(password)
-    console.log('[雷达] 登录请求 URL:', AUTH_API.LOGIN_PASSWORD)
-    const res = await CapacitorHttp.request({
-      method: 'POST',
-      url: AUTH_API.LOGIN_PASSWORD,
-      headers: { 'Content-Type': 'application/json' },
-      data: { phone: username, password: hashedPassword },
-    })
+    const isNative = Capacitor.isNativePlatform()
+    const loginUrl = isNative ? AUTH_API.LOGIN_PASSWORD : AUTH_API.LOGIN_PASSWORD_PROXY
+    console.log('[雷达] 登录请求 (平台:', isNative ? '原生' : '网页', ') URL:', loginUrl)
+    let res
+    if (isNative) {
+      res = await CapacitorHttp.request({
+        method: 'POST',
+        url: loginUrl,
+        headers: { 'Content-Type': 'application/json' },
+        data: { phone: username, password: hashedPassword },
+      })
+    } else {
+      const fetchRes = await fetch(loginUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: username, password: hashedPassword }),
+      })
+      res = {
+        status: fetchRes.status,
+        data: await fetchRes.json(),
+      }
+    }
     console.log('[雷达] 登录响应 status:', res.status, JSON.stringify(res.data).substring(0, 200))
     const data = res.data
     console.log('[雷达] 登录结果:', data.code, data.message || '')
