@@ -782,6 +782,9 @@ onMounted(() => {
   } else if (!hasToken && radarLoginForm.username && radarLoginForm.password) {
     // 有缓存的账号密码但无 token，自动登录
     handleLoginAndConnect()
+  } else {
+    // 未登录且无缓存凭据，自动弹出登录面板
+    showLoginPanel.value = true
   }
   timer.value = setInterval(() => {
     // getData()
