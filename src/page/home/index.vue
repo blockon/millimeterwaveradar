@@ -21,6 +21,8 @@
         <input v-model.trim="radarLoginForm.username" class="control_input" placeholder="用户名/手机号" />
         <input v-model="radarLoginForm.password" class="control_input" type="password" placeholder="密码" />
         <input v-model.trim="radarLoginForm.sn" class="control_input" placeholder="设备SN" />
+        <input v-model.trim="radarLoginForm.deviceId" class="control_input" placeholder="雷达设备ID" />
+        <input v-model.trim="radarLoginForm.mqttCid" class="control_input" placeholder="MQTT CID" />
         <div class="control_actions">
           <button class="control_btn" :disabled="loginLoading || radarConnecting" @click="handleLoginAndConnect">
             {{ loginLoading ? '登录中...' : radarConnecting ? '连接中...' : '登录并展示' }}
@@ -176,7 +178,8 @@ const radarLoginForm = reactive({
   username: localStorage.getItem('radarLoginUsername') || 'taoyiping',
   password: localStorage.getItem('radarLoginPassword') || 'typ19951028',
   sn: localStorage.getItem('radarMqttSn') || 'D348009930TEST00WN19MNN2',
-  deviceId: 'A1W2512K52T1ACKCVYTB',
+  deviceId: localStorage.getItem('radarDeviceId') || 'A1W2512K52T1ACKCVYTB',
+  mqttCid: localStorage.getItem('mqttCid') || 'b448226a1b104435',
 })
 const deviceLanHost = ref(
   (localStorage.getItem('deviceLanHost') || import.meta.env.VITE_LOCAL_DEVICE_HOST || '').trim()
@@ -377,7 +380,7 @@ const restartRadarWs = () => {
 // 用指定 SN 连接 MQTT（先断开旧连接）
 const connectMqttWithSn = (sn) => {
   if (!sn) return
-  const mqttCid = localStorage.getItem('mqttCid') || 'b448226a1b104435'
+  const mqttCid = radarLoginForm.mqttCid.trim() || 'b448226a1b104435'
   deviceStore.disconnectMqtt()
   deviceStore.connectMqtt({ cid: mqttCid, deviceId: sn, secretKey: '' })
   // 根据 SN 下载设备专属协议，替换兜底的 P_8009369
@@ -445,6 +448,8 @@ const handleLoginAndConnect = async () => {
       localStorage.setItem('radarLoginPassword', password)
       const sn = radarLoginForm.sn.trim()
       localStorage.setItem('radarMqttSn', sn)
+      localStorage.setItem('radarDeviceId', radarLoginForm.deviceId.trim())
+      localStorage.setItem('mqttCid', radarLoginForm.mqttCid.trim())
       showToast({ message: '登录成功', position: 'bottom' })
       showLoginPanel.value = false
       restartRadarWs()
