@@ -9,6 +9,7 @@
 import * as mqtt from 'mqtt/dist/mqtt.js'
 import CryptoJS from 'crypto-js'
 import { P_8009369 } from '@/utils/analysis.js'
+import { debugLog, highFrequencyLog } from '@/utils/debugLog'
 
 // 协议解析器实例
 let protocolParser = null
@@ -163,7 +164,7 @@ export function encryptMqttOrder(order, secretKey) {
  */
 export function encryptBroadcast(json, secretKey) {
   const jsonStr = typeof json === 'string' ? json : JSON.stringify(json)
-  console.log('[MQTT] encryptBroadcast 密钥长度:', secretKey?.length, '前10字符:', secretKey?.slice(0, 10), '是否全hex:', /^[0-9a-fA-F]+$/.test(secretKey || ''))
+  debugLog('[MQTT] encryptBroadcast 密钥长度:', secretKey?.length, '前10字符:', secretKey?.slice(0, 10), '是否全hex:', /^[0-9a-fA-F]+$/.test(secretKey || ''))
 
   // 和 encryptMqttOrder 完全一致：JSON → hex → 加校验和 → AES 加密
   let checkSum = jsonStr.split('').reduce((acc, cur) => acc + cur.charCodeAt(), 0)
@@ -266,7 +267,7 @@ export function createMqttConnection({
       const key = json.data?.svalue
       if (key) {
         _keyCache[sn] = key
-        console.log(`[MQTT] 获取密钥: ${sn}`, '长度:', key.length, '前10字符:', key.slice(0, 10))
+        debugLog(`[MQTT] 获取密钥: ${sn}`, '长度:', key.length, '前10字符:', key.slice(0, 10))
         // 如果是目标设备，同步到 _secretKey 供查询命令加密用
         if (sn === _deviceId) _secretKey = key
       }
@@ -291,16 +292,16 @@ export function createMqttConnection({
     reconnectPeriod: 1000,
     connectTimeout: 15 * 1000,
   }
-  console.log(`[MQTT] 连接 MQTT 服务器: ${mqttUrl}`)
-  console.log('MQTT 连接选项:', options)
+  debugLog(`[MQTT] 连接 MQTT 服务器: ${mqttUrl}`)
+  debugLog('MQTT 连接选项:', options)
   client = mqtt.connect(mqttUrl, options)
 
   client.on('connect', async () => {
-    console.log('[MQTT] 连接成功')
+    debugLog('[MQTT] 连接成功')
 
     if (_isReconnecting) {
       _isReconnecting = false
-      console.log('[MQTT] 重连成功')
+      debugLog('[MQTT] 重连成功')
       onConnect?.({ isReconnect: true })
       return
     }
@@ -312,7 +313,7 @@ export function createMqttConnection({
     // 同时订阅设备专属 topic（参考 runningState.vue 的 d/{sn}/m 模式）
     if (_deviceId) {
       client.subscribe(`d/${_deviceId}/m`)
-      console.log(`[MQTT] 已订阅 d/${_deviceId}/m`)
+      debugLog(`[MQTT] 已订阅 d/${_deviceId}/m`)
     }
 
     onConnect?.({ isReconnect: false })
@@ -332,18 +333,18 @@ export function createMqttConnection({
     if (topic === `d/${_deviceId}/m`) {
       try {
         const b64Str = bytesToString(payload)
-        console.log(`[MQTT] 设备专属消息 base64(前100): ${b64Str.slice(0, 100)}`)
+        highFrequencyLog(`[MQTT] 设备专属消息 base64(前100): ${b64Str.slice(0, 100)}`)
 
         // base64 解码
         const decodedBytes = Uint8Array.from(atob(b64Str), c => c.charCodeAt(0))
         const decodedHex = uint8ArrayToHex(decodedBytes)
-        console.log(`[MQTT] base64解码后hex(前100): ${decodedHex.slice(0, 100)}`)
+        highFrequencyLog(`[MQTT] base64解码后hex(前100): ${decodedHex.slice(0, 100)}`)
 
         // 尝试协议解析
         try {
           const parsed = JSON.parse(getProtocolParser().fromDevice(decodedHex))
           const reported = parsed?.state?.reported
-          console.log(`[MQTT] 解析成功:`, reported)
+          highFrequencyLog(`[MQTT] 解析成功:`, reported)
           onMessage?.(parsed, reported)
           return
         } catch (e2) {
@@ -357,11 +358,11 @@ export function createMqttConnection({
           let strData = bytesToString(decData)
           if (strData.length % 2) strData = strData.slice(0, strData.length - 1)
           if (strData) {
-            console.log(`[MQTT] 解密后hex: ${strData.slice(0, 100)}`)
+            highFrequencyLog(`[MQTT] 解密后hex: ${strData.slice(0, 100)}`)
             try {
               const parsed = JSON.parse(getProtocolParser().fromDevice(strData))
               const reported = parsed?.state?.reported
-              console.log(`[MQTT] 解密解析成功:`, reported)
+              highFrequencyLog(`[MQTT] 解密解析成功:`, reported)
               onMessage?.(parsed, reported)
             } catch (e3) {
               console.warn('[MQTT] 解密后解析失败:', e3.message)
@@ -381,19 +382,19 @@ export function createMqttConnection({
 
       // 调试：打印原始 payload 十六进制和字符串，排查 sn 提取问题
       const hex = uint8ArrayToHex(new Uint8Array(payload))
-      console.log(`[MQTT] 原始payload(hex): ${hex}`)
-      console.log(`[MQTT] 原始payload(str): ${resStr}`)
-      console.log(`[MQTT] payload[0]长度字节=${len}, 提取sn="${resStr.slice(1, len + 1)}"`)
+      highFrequencyLog(`[MQTT] 原始payload(hex): ${hex}`)
+      highFrequencyLog(`[MQTT] 原始payload(str): ${resStr}`)
+      highFrequencyLog(`[MQTT] payload[0]长度字节=${len}, 提取sn="${resStr.slice(1, len + 1)}"`)
 
       // 提取 sn
       const sn = resStr.slice(1, len + 1)
 
       // 调试：打印所有收到的消息的设备 sn
-      console.log(`[MQTT] 收到消息 sn="${sn}"，当前目标设备="${_deviceId}"，匹配=${sn === _deviceId}`)
+      highFrequencyLog(`[MQTT] 收到消息 sn="${sn}"，当前目标设备="${_deviceId}"，匹配=${sn === _deviceId}`)
 
       // 临时：不过滤，打印所有设备消息的原始数据（前100字符）
       const rawData = resStr.slice(len + 1)
-      console.log(`[MQTT] 原始数据(hex): ${uint8ArrayToHex(new Uint8Array(payload.slice(len + 1))).slice(0, 200)}`)
+      highFrequencyLog(`[MQTT] 原始数据(hex): ${uint8ArrayToHex(new Uint8Array(payload.slice(len + 1))).slice(0, 200)}`)
 
       // 只处理目标设备的消息
       if (_deviceId && sn !== _deviceId) return
@@ -410,7 +411,7 @@ export function createMqttConnection({
       if (strData.length % 2) strData = strData.slice(0, strData.length - 1) // 去除末尾乱码结束符
       if (!strData) return
 
-      console.log(`[MQTT] 收到 ${sn}: ${strData}`)
+      highFrequencyLog(`[MQTT] 收到 ${sn}: ${strData}`)
 
       // 通过协议解析器将十六进制数据转为通用 JSON 格式
       try {
@@ -427,16 +428,16 @@ export function createMqttConnection({
   })
 
   client.on('close', () => {
-    console.log('[MQTT] 连接关闭')
+    debugLog('[MQTT] 连接关闭')
     onClose?.()
   })
 
   client.on('offline', () => {
-    console.log('[MQTT] 离线')
+    debugLog('[MQTT] 离线')
   })
 
   client.on('reconnect', () => {
-    console.log('[MQTT] 重连中...')
+    debugLog('[MQTT] 重连中...')
     _isReconnecting = true
     onReconnect?.()
   })
@@ -457,7 +458,7 @@ export function createMqttConnection({
     }
     const payload = `${String.fromCharCode(_cid.length)}${_cid}${order}`
     client.publish(`d/${_deviceId}/i`, payload)
-    console.log(`[MQTT] 已发送指令到 d/${_deviceId}/i`)
+    debugLog(`[MQTT] 已发送指令到 d/${_deviceId}/i`)
   }
 
   /**
@@ -476,7 +477,7 @@ export function createMqttConnection({
     const encrypted = encryptBroadcast(json, _secretKey)
     const payload = `${String.fromCharCode(_cid.length)}${_cid}${encrypted}`
     client.publish(`d/${_deviceId}/i`, payload)
-    console.log(`[MQTT] 已发送广播:`, json, `→ 密文(前40): ${encrypted.slice(0, 40)}... → d/${_deviceId}/i`)
+    debugLog(`[MQTT] 已发送广播:`, json, `→ 密文(前40): ${encrypted.slice(0, 40)}... → d/${_deviceId}/i`)
   }
 
   /** 发送查询命令，触发设备上报状态 */
@@ -494,7 +495,7 @@ export function createMqttConnection({
     const enc1 = encryptMqttOrder(cmd1, _secretKey)
     const payload1 = `${String.fromCharCode(_cid.length)}${_cid}${enc1}`
     client.publish(`d/${_deviceId}/i`, payload1)
-    console.log('[MQTT] 已发送状态查询(1/2)')
+    debugLog('[MQTT] 已发送状态查询(1/2)')
 
     // 第二批：扩展功能（延迟 500ms 避免拥堵）
     setTimeout(() => {
@@ -503,7 +504,7 @@ export function createMqttConnection({
       const enc2 = encryptMqttOrder(cmd2, _secretKey)
       const payload2 = `${String.fromCharCode(_cid.length)}${_cid}${enc2}`
       client.publish(`d/${_deviceId}/i`, payload2)
-      console.log('[MQTT] 已发送状态查询(2/2)')
+      debugLog('[MQTT] 已发送状态查询(2/2)')
     }, 500)
   }
 

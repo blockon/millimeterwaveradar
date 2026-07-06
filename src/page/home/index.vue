@@ -158,6 +158,7 @@ import { binaryToString } from '@/utils/binaryToString'
 import { parseCompressedPcloud } from '@/utils/parse_compressed_pcloud'
 import { buildNearestRadarPersonRows, getFloorOriginXZFromRadarParams } from '@/utils/radarPersonMetrics'
 import { createShowroomScenario } from '@/utils/showroomScenario'
+import { debugLog, highFrequencyLog } from '@/utils/debugLog'
 import { Capacitor, CapacitorHttp } from '@capacitor/core'
 import { showToast } from 'vant'
 
@@ -222,7 +223,7 @@ const connectRadarWs = (deviceId, token = '') => {
   try {
     radarWs = new WebSocket(RADAR_WS_URL)
     radarWs.onopen = () => {
-      console.log(`[雷达] 已连接 (deviceId=${deviceId}, token=${token ? '有' : '无'})`)
+      debugLog(`[雷达] 已连接 (deviceId=${deviceId}, token=${token ? '有' : '无'})`)
       radarReconnectAttempt = 0
       radarConnected.value = true
       radarConnecting.value = false
@@ -255,7 +256,6 @@ const connectRadarWs = (deviceId, token = '') => {
         if (data.code !== 200 || data.track_id || data.kpts) {
           // console.log('[雷达] 消息:', JSON.stringify(data).substring(0, 300))
         }
-        console.log('[雷达] action:', JSON.stringify(data.action))
         if (Array.isArray(data.track_id)) radarTrackIds.value = data.track_id
         if (Array.isArray(data.kpts)) latestKpts.value = data.kpts
         if (Array.isArray(data.action) && data.action.length > 0) latestActions.value = data.action
@@ -285,7 +285,7 @@ const connectRadarWs = (deviceId, token = '') => {
       }
     }
     radarWs.onclose = (event) => {
-      console.log('[雷达] onclose:', { code: event.code, reason: event.reason, wasClean: event.wasClean })
+      debugLog('[雷达] onclose:', { code: event.code, reason: event.reason, wasClean: event.wasClean })
       if (radarInitTimeoutId) {
         clearTimeout(radarInitTimeoutId)
         radarInitTimeoutId = null
@@ -358,7 +358,7 @@ const scheduleReconnect = () => {
   }
   const delay = Math.min(RECONNECT_BASE_DELAY * Math.pow(2, radarReconnectAttempt), 30000)
   radarReconnectAttempt++
-  console.log(`[雷达] 将在 ${delay}ms 后第 ${radarReconnectAttempt} 次重连...`)
+  debugLog(`[雷达] 将在 ${delay}ms 后第 ${radarReconnectAttempt} 次重连...`)
   radarReconnectTimer = setTimeout(() => {
     radarReconnectTimer = null
     const deviceId = radarLoginForm.deviceId.trim()
@@ -373,7 +373,7 @@ const restartRadarWs = () => {
   const deviceId = radarLoginForm.deviceId.trim()
   const token = sessionManager.getToken() || ''
   disconnectRadarWs()
-  console.log(`[雷达] 重连 (token=${token ? '有' : '无'})`)
+  debugLog(`[雷达] 重连 (token=${token ? '有' : '无'})`)
   connectRadarWs(deviceId, token)
 }
 
@@ -409,7 +409,7 @@ const handleLoginAndConnect = async () => {
     const hashedPassword = await toSha256(password)
     const isNative = Capacitor.isNativePlatform()
     const loginUrl = isNative ? AUTH_API.LOGIN_PASSWORD : AUTH_API.LOGIN_PASSWORD_PROXY
-    console.log('[雷达] 登录请求 (平台:', isNative ? '原生' : '网页', ') URL:', loginUrl)
+    debugLog('[雷达] 登录请求 (平台:', isNative ? '原生' : '网页', ') URL:', loginUrl)
     let res
     if (isNative) {
       res = await CapacitorHttp.request({
@@ -429,9 +429,9 @@ const handleLoginAndConnect = async () => {
         data: await fetchRes.json(),
       }
     }
-    console.log('[雷达] 登录响应 status:', res.status, JSON.stringify(res.data).substring(0, 200))
+    debugLog('[雷达] 登录响应 status:', res.status, JSON.stringify(res.data).substring(0, 200))
     const data = res.data
-    console.log('[雷达] 登录结果:', data.code, data.message || '')
+    debugLog('[雷达] 登录结果:', data.code, data.message || '')
     if (data.code === 200) {
       localStorage.setItem('deviceLanHost', deviceLanHost.value.trim())
       const user = data.data || {}
@@ -781,7 +781,7 @@ onMounted(() => {
   // startPlay();
   const hasToken = !!sessionManager.getToken()
   const hasDeviceId = !!radarLoginForm.deviceId.trim()
-  console.log('hasToken',hasToken,'hasDeviceId',hasDeviceId)
+  debugLog('hasToken',hasToken,'hasDeviceId',hasDeviceId)
   if (hasToken && hasDeviceId) {
     connectRadarWs(radarLoginForm.deviceId.trim(), sessionManager.getToken() || '')
   } else if (!hasToken && radarLoginForm.username && radarLoginForm.password) {
@@ -826,7 +826,7 @@ const getData = () => {
   })
     .then((data) => {
       if (!data) return
-      console.log(data, '接口返回数据')
+      debugLog(data, '接口返回数据')
       dealData(data.data)
       return
       devData.value.right_swing_area = data.right_swing_area
@@ -852,7 +852,7 @@ if (!window.JsFunction) {
 // 将设备上报数据同步到 devData（HTTP 轮询和 MQTT 上报共用）
 const applyDeviceReport = (reported) => {
   if (!reported) return
-  console.log('设备状态上报----->', reported)
+  highFrequencyLog('设备状态上报----->', reported)
   devData.value.right_swing_area =
     reported?.actAnglePositionForHordirH2 !== undefined ? reported?.actAnglePositionForHordirH2 : devData.value.right_swing_area
   devData.value.left_swing_area =
@@ -924,11 +924,11 @@ function handleTestSend(scenario) {
   const broadcastId = SCENARIO_BROADCAST_ID[scenario]
   if (cmd) {
     deviceStore.sendCommand(cmd)
-    console.log('[测试] AC指令:', scenario, cmd)
+    debugLog('[测试] AC指令:', scenario, cmd)
   }
   if (broadcastId) {
     deviceStore.sendBroadcast({ broadcastid: broadcastId })
-    console.log('[测试] 播报:', scenario, broadcastId)
+    debugLog('[测试] 播报:', scenario, broadcastId)
   }
 }
 

@@ -19,6 +19,7 @@
  */
 
 import { ref } from 'vue'
+import { debugLog } from '@/utils/debugLog'
 
 // ==================== 配置表 ====================
 
@@ -125,7 +126,7 @@ export function createShowroomScenario(sendCommand, sendBroadcast, options = {})
 
     // 语音文本
     voiceText.value = SCENARIO_VOICE[scenario] || ''
-    console.log(`[展厅] 场景: ${scenario} | 语音: ${voiceText.value}`)
+    debugLog(`[展厅] 场景: ${scenario} | 语音: ${voiceText.value}`)
 
     // 空调指令 (透传协议)
     const cmd = SCENARIO_AC_COMMANDS[scenario]
@@ -133,7 +134,7 @@ export function createShowroomScenario(sendCommand, sendBroadcast, options = {})
       const cmdKey = JSON.stringify(cmd)
       if (cmdKey !== lastSentCmdKey) {
         lastSentCmdKey = cmdKey
-        console.log('[展厅] → AC:', cmd)
+        debugLog('[展厅] → AC:', cmd)
         sendCommand(cmd)
       }
     }
@@ -143,7 +144,7 @@ export function createShowroomScenario(sendCommand, sendBroadcast, options = {})
     if (broadcastId && sendBroadcast && broadcastId !== lastBroadcastId) {
       lastBroadcastId = broadcastId
       const msg = { broadcastid: broadcastId }
-      console.log('[展厅] → 播报:', msg)
+      debugLog('[展厅] → 播报:', msg)
       sendBroadcast(msg)
     }
   }

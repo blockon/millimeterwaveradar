@@ -11,7 +11,7 @@ echo "========================================="
 # 第一步：构建前端
 echo ""
 echo "[1/3] 构建前端（生产模式）..."
-npm run build
+VITE_APP_TARGET=apk npm run build
 
 # 第二步：同步到 Android 项目
 echo ""

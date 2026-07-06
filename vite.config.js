@@ -44,6 +44,7 @@ const autoPlugins = [
 
 export default ({ mode }) => {
   const env = loadEnv(mode, process.cwd())
+  const appTarget = process.env.VITE_APP_TARGET || env.VITE_APP_TARGET || 'web'
   const deviceHost = env.VITE_LOCAL_DEVICE_HOST || '192.168.1.1'
   const devicePort = env.VITE_LOCAL_DEVICE_PORT || '8089'
   const localDeviceApiBase =
@@ -100,11 +101,11 @@ export default ({ mode }) => {
           data: {
             mode,
             title: '毫米波雷达demo',
-            cdn: mode !== 'pro'
+            cdn: appTarget !== 'apk'
               ? [
                   'https://apppic.mymlsoft.com/app_static/vconsole.min.js',
                 ]
-              : [], // 生产构建不注入 vconsole，减小 APK 体积
+              : [],
             env, // 环境变量
           },
         },

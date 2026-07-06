@@ -21,12 +21,14 @@ declare global {
   const createPinia: typeof import('pinia')['createPinia']
   const createShowroomScenario: typeof import('./utils/showroomScenario.js')['createShowroomScenario']
   const customRef: typeof import('vue')['customRef']
+  const debugLog: typeof import('./utils/debugLog.js')['debugLog']
   const decryptMqttMessage: typeof import('./utils/mqttService.js')['decryptMqttMessage']
   const defineAsyncComponent: typeof import('vue')['defineAsyncComponent']
   const defineComponent: typeof import('vue')['defineComponent']
   const defineStore: typeof import('pinia')['defineStore']
   const deviceStore: typeof import('./store/deviceStore.js')['deviceStore']
   const effectScope: typeof import('vue')['effectScope']
+  const enableDebugLogs: typeof import('./utils/debugLog.js')['enableDebugLogs']
   const encryptBroadcast: typeof import('./utils/mqttService.js')['encryptBroadcast']
   const encryptMqttOrder: typeof import('./utils/mqttService.js')['encryptMqttOrder']
   const formatTrackIdForHeatItem: typeof import('./utils/radarPersonMetrics.js')['formatTrackIdForHeatItem']
@@ -35,10 +37,12 @@ declare global {
   const getCurrentScope: typeof import('vue')['getCurrentScope']
   const getFloorOriginXZFromRadarParams: typeof import('./utils/radarPersonMetrics.js')['getFloorOriginXZFromRadarParams']
   const h: typeof import('vue')['h']
+  const highFrequencyLog: typeof import('./utils/debugLog.js')['highFrequencyLog']
   const horizontalAngleDegFromXZ: typeof import('./utils/radarPersonMetrics.js')['horizontalAngleDegFromXZ']
   const horizontalDistanceFromOriginXZ: typeof import('./utils/radarPersonMetrics.js')['horizontalDistanceFromOriginXZ']
   const http: typeof import('./api/request.js')['http']
   const inject: typeof import('vue')['inject']
+  const isApkTarget: typeof import('./utils/debugLog.js')['isApkTarget']
   const isProxy: typeof import('vue')['isProxy']
   const isReactive: typeof import('vue')['isReactive']
   const isReadonly: typeof import('vue')['isReadonly']
@@ -130,12 +134,14 @@ declare module 'vue' {
     readonly createPinia: UnwrapRef<typeof import('pinia')['createPinia']>
     readonly createShowroomScenario: UnwrapRef<typeof import('./utils/showroomScenario.js')['createShowroomScenario']>
     readonly customRef: UnwrapRef<typeof import('vue')['customRef']>
+    readonly debugLog: UnwrapRef<typeof import('./utils/debugLog.js')['debugLog']>
     readonly decryptMqttMessage: UnwrapRef<typeof import('./utils/mqttService.js')['decryptMqttMessage']>
     readonly defineAsyncComponent: UnwrapRef<typeof import('vue')['defineAsyncComponent']>
     readonly defineComponent: UnwrapRef<typeof import('vue')['defineComponent']>
     readonly defineStore: UnwrapRef<typeof import('pinia')['defineStore']>
     readonly deviceStore: UnwrapRef<typeof import('./store/deviceStore.js')['deviceStore']>
     readonly effectScope: UnwrapRef<typeof import('vue')['effectScope']>
+    readonly enableDebugLogs: UnwrapRef<typeof import('./utils/debugLog.js')['enableDebugLogs']>
     readonly encryptBroadcast: UnwrapRef<typeof import('./utils/mqttService.js')['encryptBroadcast']>
     readonly encryptMqttOrder: UnwrapRef<typeof import('./utils/mqttService.js')['encryptMqttOrder']>
     readonly formatTrackIdForHeatItem: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['formatTrackIdForHeatItem']>
@@ -144,10 +150,12 @@ declare module 'vue' {
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
     readonly getFloorOriginXZFromRadarParams: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['getFloorOriginXZFromRadarParams']>
     readonly h: UnwrapRef<typeof import('vue')['h']>
+    readonly highFrequencyLog: UnwrapRef<typeof import('./utils/debugLog.js')['highFrequencyLog']>
     readonly horizontalAngleDegFromXZ: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['horizontalAngleDegFromXZ']>
     readonly horizontalDistanceFromOriginXZ: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['horizontalDistanceFromOriginXZ']>
     readonly http: UnwrapRef<typeof import('./api/request.js')['http']>
     readonly inject: UnwrapRef<typeof import('vue')['inject']>
+    readonly isApkTarget: UnwrapRef<typeof import('./utils/debugLog.js')['isApkTarget']>
     readonly isProxy: UnwrapRef<typeof import('vue')['isProxy']>
     readonly isReactive: UnwrapRef<typeof import('vue')['isReactive']>
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>

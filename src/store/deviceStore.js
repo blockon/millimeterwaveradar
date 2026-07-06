@@ -3,6 +3,7 @@ import {
   createMqttConnection,
   encryptMqttOrder,
 } from '@/utils/mqttService'
+import { debugLog, highFrequencyLog } from '@/utils/debugLog'
 
 export const deviceStore = defineStore('deviceStore', {
   state: () => ({
@@ -50,7 +51,7 @@ export const deviceStore = defineStore('deviceStore', {
       const cloudBase = (import.meta.env.VITE_BASE_URL || import.meta.env.VITE_BASE_GATEWAYURL || 'https://superapp.mymlsoft.com').replace(/\/$/, '')
       // 兼容 VITE_BASE_URL 已包含 /saserver 路径的情况
       const url = cloudBase.endsWith('/saserver') ? `${cloudBase}/js/getOne` : `${cloudBase}/saserver/js/getOne`
-      console.log('[deviceStore] 从云服务器下载协议, materialCode:', materialCode, 'url:', url)
+      debugLog('[deviceStore] 从云服务器下载协议, materialCode:', materialCode, 'url:', url)
       try {
         const res = await fetch(url, {
           method: 'POST',
@@ -70,7 +71,7 @@ export const deviceStore = defineStore('deviceStore', {
         let Func = null  // eslint-disable-line
         eval(`(function(){Func = ${_js.includes(materialCode) ? `P_${materialCode}` : 'FRIDGE'};${_js};})()`)
         window.JsFunction = new Func()
-        console.log('[deviceStore] 设备协议下载成功，JsFunction 已更新')
+        debugLog('[deviceStore] 设备协议下载成功，JsFunction 已更新')
       } catch (e) {
         console.error('[deviceStore] 协议下载失败，继续使用兜底 P_8009369:', e)
       }
@@ -102,14 +103,14 @@ export const deviceStore = defineStore('deviceStore', {
           this.mqttConnected = true
           this.mqttConnecting = false
           if (!isReconnect) {
-            console.log('[deviceStore] MQTT 首次连接成功')
+            debugLog('[deviceStore] MQTT 首次连接成功')
           }
           // 获取设备加密密钥，供后续发送指令使用
           if (!this.secretKey && this.mqttConnection) {
             const key = await this.mqttConnection.fetchSecretKey(deviceId)
             if (key) {
               this.secretKey = key
-              console.log('[deviceStore] 已获取设备密钥')
+              debugLog('[deviceStore] 已获取设备密钥')
             }
           }
         },
@@ -119,7 +120,7 @@ export const deviceStore = defineStore('deviceStore', {
             // 打印关键状态摘要
             const keys = Object.keys(reported)
             const summary = keys.map(k => `${k}=${JSON.stringify(reported[k])}`).join(' | ')
-            console.log(`[MQTT] 设备状态 (${keys.length}项): ${summary}`)
+            highFrequencyLog(`[MQTT] 设备状态 (${keys.length}项): ${summary}`)
           }
         },
         onClose: () => {
@@ -195,7 +196,7 @@ export const deviceStore = defineStore('deviceStore', {
           }
         }
         const encrypted = encryptMqttOrder(order, this.secretKey)
-        console.log('[deviceStore] MQTT 发送指令, hex:', order.slice(0, 40) + (order.length > 40 ? '...' : ''))
+        debugLog('[deviceStore] MQTT 发送指令, hex:', order.slice(0, 40) + (order.length > 40 ? '...' : ''))
         this.mqttConnection.sendCommand(encrypted)
       } else {
         // 原生桥接通道（保持原有逻辑）
@@ -207,7 +208,7 @@ export const deviceStore = defineStore('deviceStore', {
             "name": 'sendAsyncRawCommand'
           }]
         }
-        console.log('控制指令：', action)
+        debugLog('控制指令：', action)
         ToNativeBridge.sendDataToNative(action);
       }
     },

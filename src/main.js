@@ -6,11 +6,12 @@ import './style/index.scss'
 import vant from 'vant';
 import { createPinia } from 'pinia'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
+import { debugLog } from '@/utils/debugLog'
 
-// 非生产环境初始化 vConsole
+// 测试包始终启用 vConsole
 if (typeof VConsole !== 'undefined') {
   new VConsole()
-  console.log('[vConsole] 已启动')
+  debugLog('[vConsole] 已启动')
 }
 
 const app = createApp(App)
