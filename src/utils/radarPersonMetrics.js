@@ -41,22 +41,46 @@ export function formatTrackIdForHeatItem(trackId) {
 /**
  * @param {{ x?: number, z?: number }|null} floorOriginXZ 雷达地面投影（扇形圆心）；缺省为场景原点
  */
-export function buildNearestRadarPersonRows(kptsList, trackIds, roomDepth, maxRows = 3, floorOriginXZ = null) {
+export function buildNearestRadarPersonRows(
+  kptsList,
+  trackIds,
+  roomDepth,
+  maxRows = 3,
+  floorOriginXZ = null,
+  trackPositions = [],
+  distancesToRadar = []
+) {
   const ox = floorOriginXZ != null && Number.isFinite(floorOriginXZ.x) ? floorOriginXZ.x : 0
   const oz = floorOriginXZ != null && Number.isFinite(floorOriginXZ.z) ? floorOriginXZ.z : 0
-  if (!Array.isArray(kptsList) || kptsList.length === 0) return []
+  const kptsCount = Array.isArray(kptsList) ? kptsList.length : 0
+  const posCount = Array.isArray(trackPositions) ? trackPositions.length : 0
+  const distCount = Array.isArray(distancesToRadar) ? distancesToRadar.length : 0
+  const trackCount = Array.isArray(trackIds) ? trackIds.length : 0
+  const n = trackCount > 0 ? trackCount : Math.max(kptsCount, posCount, distCount)
+  if (n === 0) return []
   const rows = []
-  const n = kptsList.length
   for (let index = 0; index < n; index++) {
-    const personData = kptsList[index]
-    if (!personData || typeof personData !== "object") continue
     const trackId = Array.isArray(trackIds) && trackIds[index] != null ? trackIds[index] : index
-    const { x, z } = kptJointToSceneXZ(personData, 0, roomDepth)
-    if (!Number.isFinite(x) || !Number.isFinite(z)) continue
-    const dx = x - ox
-    const dz = z - oz
-    const distanceM = horizontalDistanceFromOriginXZ(dx, dz)
-    const angel = horizontalAngleDegFromXZ(dx, dz)
+    const personData = Array.isArray(kptsList) ? kptsList[index] : null
+    let point = null
+    if (personData && typeof personData === "object") {
+      const jointPoint = kptJointToSceneXZ(personData, 0, roomDepth)
+      if (Number.isFinite(jointPoint.x) && Number.isFinite(jointPoint.z)) point = jointPoint
+    }
+    if (!point && Array.isArray(trackPositions)) {
+      const pos = trackPositions[index]
+      if (Array.isArray(pos)) {
+        const x = Number(pos[0]) - roomDepth / 2
+        const z = -Number(pos[1])
+        if (Number.isFinite(x) && Number.isFinite(z)) point = { x, z }
+      }
+    }
+    const distanceFromField = Array.isArray(distancesToRadar) ? Number(distancesToRadar[index]) : NaN
+    if (!point && !Number.isFinite(distanceFromField)) continue
+    const dx = point ? point.x - ox : 0
+    const dz = point ? point.z - oz : 0
+    const distanceM = point ? horizontalDistanceFromOriginXZ(dx, dz) : distanceFromField
+    const angel = point ? horizontalAngleDegFromXZ(dx, dz) : null
     rows.push({ trackId, distanceM, angel, sortKey: distanceM, sourceIndex: index })
   }
   rows.sort((a, b) => a.sortKey - b.sortKey)
