@@ -101,11 +101,9 @@ export default ({ mode }) => {
           data: {
             mode,
             title: '毫米波雷达demo',
-            cdn: appTarget !== 'apk'
-              ? [
-                  'https://apppic.mymlsoft.com/app_static/vconsole.min.js',
-                ]
-              : [],
+            cdn: [
+              'https://apppic.mymlsoft.com/app_static/vconsole.min.js',
+            ],
             env, // 环境变量
           },
         },

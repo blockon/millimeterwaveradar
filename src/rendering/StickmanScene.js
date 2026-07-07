@@ -18,6 +18,7 @@ import { horizontalDistanceFromOriginXZ, kptJointToSceneXZ } from "@/utils/radar
 export class StickmanScene {
   constructor(canvas, config = {}) {
     this.canvas = canvas
+    const performanceMode = !!config.performanceMode
     this.config = {
       width: canvas.clientWidth,
       height: canvas.clientHeight,
@@ -25,6 +26,16 @@ export class StickmanScene {
       roomDepth: 5,
       roomHeight: 3,
       renderMode: "stickman",
+      performanceMode,
+      antialias: !performanceMode,
+      pixelRatio: performanceMode ? 1 : Math.min(window.devicePixelRatio, 2),
+      enableShadows: !performanceMode,
+      pointCloudQueueSize: performanceMode ? 3 : 10,
+      pointCloudDisplayRatio: performanceMode ? 0.6 : 1 / 2,
+      pointCloudMaxPoints: performanceMode ? 30000 : 100000,
+      pointCloudSphereSegments: performanceMode ? 6 : 10,
+      pointCloudRenderMode: performanceMode ? "points" : "mesh",
+      pointCloudPointSize: performanceMode ? 0.06 : 0.04,
       ...config,
     }
     this.scene = null
@@ -51,14 +62,16 @@ export class StickmanScene {
   init() {
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
-      antialias: true,
+      antialias: this.config.antialias,
       alpha: true,
     })
     this.renderer.setSize(this.config.width, this.config.height)
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    this.renderer.setPixelRatio(this.config.pixelRatio)
     this.renderer.setClearColor(0x000000, 0)
-    this.renderer.shadowMap.enabled = true
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    this.renderer.shadowMap.enabled = this.config.enableShadows
+    if (this.config.enableShadows) {
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    }
 
     this.scene = new THREE.Scene()
     this.camera = new THREE.PerspectiveCamera(60, this.config.width / this.config.height, 0.1, 100)
@@ -88,17 +101,19 @@ export class StickmanScene {
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.4)
     dirLight.position.set(5, 10, 6)
-    dirLight.castShadow = true
-    dirLight.shadow.mapSize.width = 2048
-    dirLight.shadow.mapSize.height = 2048
-    dirLight.shadow.camera.near = 0.5
-    dirLight.shadow.camera.far = 50
-    dirLight.shadow.camera.left = -15
-    dirLight.shadow.camera.right = 15
-    dirLight.shadow.camera.top = 15
-    dirLight.shadow.camera.bottom = -15
-    dirLight.shadow.bias = -0.0001
-    dirLight.shadow.normalBias = 0.02
+    dirLight.castShadow = this.config.enableShadows
+    if (this.config.enableShadows) {
+      dirLight.shadow.mapSize.width = 2048
+      dirLight.shadow.mapSize.height = 2048
+      dirLight.shadow.camera.near = 0.5
+      dirLight.shadow.camera.far = 50
+      dirLight.shadow.camera.left = -15
+      dirLight.shadow.camera.right = 15
+      dirLight.shadow.camera.top = 15
+      dirLight.shadow.camera.bottom = -15
+      dirLight.shadow.bias = -0.0001
+      dirLight.shadow.normalBias = 0.02
+    }
     this.scene.add(dirLight)
     const fillLight = new THREE.DirectionalLight(0xffffff, 0.5)
     fillLight.position.set(-4, 5, -4)
@@ -134,6 +149,7 @@ export class StickmanScene {
   }
 
   enableModelShadows(model) {
+    if (!this.config.enableShadows) return
     model.traverse((obj) => {
       if (obj.isMesh || obj.isSkinnedMesh) {
         obj.castShadow = true
@@ -160,10 +176,31 @@ export class StickmanScene {
       this.scene.remove(this.pointCloudPoints)
       this.pointCloudPoints = null
     }
+    const maxPoints = this.config.pointCloudMaxPoints
+    if (this.config.pointCloudRenderMode === "points") {
+      const geom = new THREE.BufferGeometry()
+      geom.setAttribute("position", new THREE.BufferAttribute(new Float32Array(maxPoints * 3), 3))
+      geom.setDrawRange(0, 0)
+      const mat = new THREE.PointsMaterial({
+        color: 0x22d3ee,
+        size: this.config.pointCloudPointSize,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+      })
+      this.pointCloudPoints = new THREE.Points(geom, mat)
+      this.pointCloudPoints.userData.renderCount = 0
+      this.pointCloudPoints.frustumCulled = false
+      this.pointCloudPoints.visible = false
+      this.scene.add(this.pointCloudPoints)
+      return
+    }
+
     if (!this._pointCloudDummy) this._pointCloudDummy = new THREE.Object3D()
-    const maxPoints = 100000
     const sphereRadius = 0.018
-    const geom = new THREE.SphereGeometry(sphereRadius, 10, 10)
+    const sphereSegments = this.config.pointCloudSphereSegments
+    const geom = new THREE.SphereGeometry(sphereRadius, sphereSegments, sphereSegments)
     const mat = new THREE.MeshBasicMaterial({
       color: 0x22d3ee,
       transparent: true,
@@ -172,6 +209,7 @@ export class StickmanScene {
     })
     this.pointCloudPoints = new THREE.InstancedMesh(geom, mat, maxPoints)
     this.pointCloudPoints.count = 0
+    this.pointCloudPoints.userData.renderCount = 0
     this.pointCloudPoints.visible = false
     this.scene.add(this.pointCloudPoints)
   }
@@ -180,40 +218,59 @@ export class StickmanScene {
     if (!this.pointCloudPoints) return
     if (!xyz || xyz.length === 0) {
       this.pointCloudQueue = []
-      this.pointCloudPoints.count = 0
+      if (this.pointCloudPoints.isPoints) {
+        this.pointCloudPoints.geometry.setDrawRange(0, 0)
+      } else {
+        this.pointCloudPoints.count = 0
+      }
+      this.pointCloudPoints.userData.renderCount = 0
       this.pointCloudPoints.visible = false
       return
     }
-    const queueSize = 10
-    const displayRatio = 1 / 2
+    const queueSize = this.config.pointCloudQueueSize
+    const displayRatio = this.config.pointCloudDisplayRatio
 
-    this.pointCloudQueue.push(xyz.map((p) => [Number(p[0]) || 0, Number(p[1]) || 0, Number(p[2]) || 0]))
+    this.pointCloudQueue.push(xyz)
     if (this.pointCloudQueue.length > queueSize) this.pointCloudQueue.shift()
 
-    const allPoints = this.pointCloudQueue.flat()
+    const allPoints = this.pointCloudQueue.length === 1 ? this.pointCloudQueue[0] : this.pointCloudQueue.flat()
     const n = allPoints.length
-    const toShow = Math.floor(n * displayRatio)
+    const toShow = Math.min(this.config.pointCloudMaxPoints, Math.floor(n * displayRatio))
     if (toShow <= 0) {
-      this.pointCloudPoints.count = 0
+      if (this.pointCloudPoints.isPoints) {
+        this.pointCloudPoints.geometry.setDrawRange(0, 0)
+      } else {
+        this.pointCloudPoints.count = 0
+      }
+      this.pointCloudPoints.userData.renderCount = 0
       this.pointCloudPoints.visible = false
       return
     }
-    const indices = new Set()
-    while (indices.size < toShow) {
-      indices.add(Math.floor(Math.random() * n))
-    }
-    const sampled = Array.from(indices).map((i) => allPoints[i])
-
     const roomDepth = this.config.roomDepth
-    const dummy = this._pointCloudDummy
-    for (let i = 0; i < sampled.length; i++) {
-      const p = sampled[i]
-      dummy.position.set(p[0] - roomDepth / 2, p[2] + 1, -p[1])
-      dummy.updateMatrix()
-      this.pointCloudPoints.setMatrixAt(i, dummy.matrix)
+    const step = n / toShow
+    if (this.pointCloudPoints.isPoints) {
+      const positions = this.pointCloudPoints.geometry.attributes.position.array
+      for (let i = 0; i < toShow; i++) {
+        const p = allPoints[Math.min(n - 1, Math.floor(i * step))]
+        const offset = i * 3
+        positions[offset] = (Number(p[0]) || 0) - roomDepth / 2
+        positions[offset + 1] = (Number(p[2]) || 0) + 1
+        positions[offset + 2] = -(Number(p[1]) || 0)
+      }
+      this.pointCloudPoints.geometry.setDrawRange(0, toShow)
+      this.pointCloudPoints.geometry.attributes.position.needsUpdate = true
+    } else {
+      const dummy = this._pointCloudDummy
+      for (let i = 0; i < toShow; i++) {
+        const p = allPoints[Math.min(n - 1, Math.floor(i * step))]
+        dummy.position.set((Number(p[0]) || 0) - roomDepth / 2, (Number(p[2]) || 0) + 1, -(Number(p[1]) || 0))
+        dummy.updateMatrix()
+        this.pointCloudPoints.setMatrixAt(i, dummy.matrix)
+      }
+      this.pointCloudPoints.count = toShow
+      this.pointCloudPoints.instanceMatrix.needsUpdate = true
     }
-    this.pointCloudPoints.count = sampled.length
-    this.pointCloudPoints.instanceMatrix.needsUpdate = true
+    this.pointCloudPoints.userData.renderCount = toShow
     this.pointCloudPoints.visible = this.pointCloudVisible
   }
 
@@ -235,7 +292,7 @@ export class StickmanScene {
   setPointCloudVisible(visible) {
     this.pointCloudVisible = !!visible
     if (this.pointCloudPoints) {
-      this.pointCloudPoints.visible = this.pointCloudVisible && this.pointCloudPoints.count > 0
+      this.pointCloudPoints.visible = this.pointCloudVisible && (this.pointCloudPoints.userData.renderCount || 0) > 0
     }
   }
 

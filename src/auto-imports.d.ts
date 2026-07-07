@@ -47,6 +47,7 @@ declare global {
   const isReactive: typeof import('vue')['isReactive']
   const isReadonly: typeof import('vue')['isReadonly']
   const isRef: typeof import('vue')['isRef']
+  const isTvPerformanceMode: typeof import('./utils/debugLog.js')['isTvPerformanceMode']
   const kptJointToSceneXZ: typeof import('./utils/radarPersonMetrics.js')['kptJointToSceneXZ']
   const mapActions: typeof import('pinia')['mapActions']
   const mapGetters: typeof import('pinia')['mapGetters']
@@ -160,6 +161,7 @@ declare module 'vue' {
     readonly isReactive: UnwrapRef<typeof import('vue')['isReactive']>
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
     readonly isRef: UnwrapRef<typeof import('vue')['isRef']>
+    readonly isTvPerformanceMode: UnwrapRef<typeof import('./utils/debugLog.js')['isTvPerformanceMode']>
     readonly kptJointToSceneXZ: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['kptJointToSceneXZ']>
     readonly mapActions: UnwrapRef<typeof import('pinia')['mapActions']>
     readonly mapGetters: UnwrapRef<typeof import('pinia')['mapGetters']>

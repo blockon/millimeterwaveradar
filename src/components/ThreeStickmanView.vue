@@ -3,8 +3,9 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from "vue"
+import { computed, ref, watch, onMounted, onUnmounted } from "vue"
 import { StickmanScene } from "@/rendering/StickmanScene"
+import { isTvPerformanceMode } from "@/utils/debugLog"
 
 const props = defineProps({
   kptsData: { type: Array, default: () => [] },
@@ -17,16 +18,47 @@ const props = defineProps({
   skeletonMode: { type: String, default: "stickman" },
   showSectorFloor: { type: Boolean, default: true },
   sectorFloorIdle: { type: Boolean, default: false },
+  performanceMode: { type: Boolean, default: null },
 })
 
 const containerRef = ref(null)
 let sceneManager = null
 let animationId = null
 let resizeObserver = null
+let lastRenderTime = 0
 
-function animate() {
-  if (sceneManager) sceneManager.animate()
+const performanceModeEnabled = computed(() =>
+  props.performanceMode == null ? isTvPerformanceMode : props.performanceMode
+)
+const targetFrameInterval = computed(() => (performanceModeEnabled.value ? 1000 / 30 : 0))
+
+function animate(now = 0) {
+  if (sceneManager) {
+    const interval = targetFrameInterval.value
+    if (interval <= 0 || now - lastRenderTime >= interval) {
+      lastRenderTime = now
+      sceneManager.animate()
+    }
+  }
   animationId = requestAnimationFrame(animate)
+}
+
+function syncHumanPose(data = props.kptsData) {
+  if (!sceneManager) return
+  if (!props.showSkeleton) {
+    sceneManager.updateHumanPose([], [])
+    return
+  }
+  sceneManager.updateHumanPose(data, props.trackIds)
+}
+
+function syncPointCloud(data = props.pointCloudData) {
+  if (!sceneManager) return
+  if (!props.showPointCloud) {
+    sceneManager.updatePointCloud([])
+    return
+  }
+  sceneManager.updatePointCloud(data)
 }
 
 onMounted(() => {
@@ -43,8 +75,9 @@ onMounted(() => {
     roomWidth: props.roomConfig.width,
     roomDepth: props.roomConfig.depth,
     renderMode: props.skeletonMode === "stickman" ? "stickman" : "model",
+    performanceMode: performanceModeEnabled.value,
   })
-  animate()
+  animationId = requestAnimationFrame(animate)
 
   resizeObserver = new ResizeObserver(() => {
     if (containerRef.value && sceneManager) {
@@ -58,6 +91,8 @@ onMounted(() => {
     sceneManager.updateRadarModel(props.radarParams && typeof props.radarParams === "object" ? props.radarParams : {})
     sceneManager.setSectorFloorVisible(props.showSectorFloor !== false)
     sceneManager.setSectorFloorIdle(!!props.sectorFloorIdle)
+    syncHumanPose()
+    syncPointCloud()
   }
 })
 
@@ -74,46 +109,55 @@ onUnmounted(() => {
 watch(
   () => props.kptsData,
   (data) => {
-    if (sceneManager) sceneManager.updateHumanPose(data, props.trackIds)
-  },
-  { deep: true }
+    syncHumanPose(data)
+  }
+)
+
+watch(
+  () => props.trackIds,
+  () => {
+    syncHumanPose()
+  }
 )
 
 watch(
   () => props.roomConfig,
   (cfg) => {
     if (sceneManager && cfg) sceneManager.updateRoom(cfg.width ?? 5, cfg.depth ?? 5)
-  },
-  { deep: true }
+  }
 )
 
 watch(
   () => props.radarParams,
   (params) => {
     if (sceneManager && params) sceneManager.updateRadarModel(params)
-  },
-  { deep: true }
+  }
 )
 
 watch(
   () => props.pointCloudData,
   (data) => {
-    if (sceneManager) sceneManager.updatePointCloud(data)
-  },
-  { deep: true }
+    syncPointCloud(data)
+  }
 )
 
 watch(
   () => props.showSkeleton,
   (v) => {
-    if (sceneManager) sceneManager.setSkeletonVisible(v)
+    if (sceneManager) {
+      sceneManager.setSkeletonVisible(v)
+      syncHumanPose()
+    }
   }
 )
 
 watch(
   () => props.showPointCloud,
   (v) => {
-    if (sceneManager) sceneManager.setPointCloudVisible(v)
+    if (sceneManager) {
+      sceneManager.setPointCloudVisible(v)
+      syncPointCloud()
+    }
   }
 )
 
