@@ -46,7 +46,7 @@
           <div v-for="item in testScenarios" :key="item.key" class="test_row">
             <span class="test_label">{{ item.label }}</span>
             <span class="test_hint">{{ item.hint }}</span>
-            <button class="test_send_btn" @click="handleTestSend(item.key)">发送</button>
+            <button class="test_send_btn" @click="handleTestSend(item.key)">发{{ item.label }}</button>
           </div>
         </div>
       </div>
@@ -70,8 +70,8 @@
       <div class="wind_area">
         <img class="img_pro" :src="devImg" />
         <div v-if="devData.power">
-          <img :src="windModeImgLeft" class="windAreaQuanYuBottom" />
-          <img :src="windModeImgRight" class="windAreaQuanYuBottom" />
+          <img v-if="windModeImgLeft" :src="windModeImgLeft" class="windAreaQuanYuBottom" :class="{ windAreaQuanYuBottomActive: windEffectActive }" />
+          <img v-if="windModeImgRight" :src="windModeImgRight" class="windAreaQuanYuBottom" :class="{ windAreaQuanYuBottomActive: windEffectActive }" />
           <div class="windModeText">{{ radarActionLabel }}</div>
           <img src="@img/windModeBg.png" class="windModeBgImg" />
         </div>
@@ -81,7 +81,7 @@
             <ThreeStickmanView
               :kpts-data="displayKptsData"
               :track-ids="displayTrackIds"
-              :point-cloud-data="latestPointCloud"
+              :point-cloud-data="emptyRadarData"
               :room-config="roomConfig"
               :radar-params="radarParams"
               :show-skeleton="true"
@@ -104,11 +104,11 @@
           {{ rightPanelPersonLabel }}
         </div>
       </div>
-      <div class="radar_point_cloud_panel" v-show="!radarNoPerson">
+      <div class="radar_point_cloud_panel" v-show="showPointCloudPanel">
         <div class="dev"></div>
         <ThreeStickmanView
-          :kpts-data="displayKptsData"
-          :track-ids="displayTrackIds"
+          :kpts-data="emptyRadarData"
+          :track-ids="emptyRadarData"
           :point-cloud-data="latestPointCloud"
           :room-config="roomConfig"
           :radar-params="radarParams"
@@ -119,13 +119,13 @@
       <!-- 未检测到人体 -->
       <div v-if="!hasRightPanelPeople" class="no_body">区域内暂未检测到人体</div>
       <!-- 雷达优先：有雷达人数时展示最近 3 人 -->
-      <div v-else-if="radarConnected && radarPersonCount > 0" class="heat_list">
+      <div v-else-if="radarConnected && nearestRadarTargets.length > 0" class="heat_list">
         <div class="heat_item mid" v-for="(item, index) in nearestRadarTargets" :key="`${item.trackId}-${index}`">
           <div class="itemLeft">{{ formatRadarRankByIndex(index) }}</div>
           <img src="@img/ic_map.png" class="itemMap" />
-          <div class="itemAngel">{{ item.angel }}°</div>
+          <div class="itemAngel">{{ formatRadarRowAngle(item) }}</div>
           <div class="item_line"></div>
-          <div style="margin-left: 50px" class="itemDistance">{{ formatRadarRowDistance(item) }}</div>
+          <div class="itemDistance">{{ formatRadarRowDistance(item) }}</div>
         </div>
       </div>
       <!-- 空调侧热源列表（无雷达人数时） -->
@@ -138,7 +138,7 @@
           <img src="@img/ic_map.png" class="itemMap" />
           <div class="itemAngel">{{ item.angel }}°</div>
           <div class="item_line"></div>
-          <div style="margin-left: 50px" class="itemDistance">{{ item.distance / 100 }}m</div>
+          <div class="itemDistance">{{ item.distance / 100 }}m</div>
         </div>
       </div>
       <div class="tips">温馨提示：最多显示3个人</div>
@@ -148,7 +148,6 @@
 </template>
 
 <script setup>
-import SVGA from 'svgaplayerweb'
 import { P_8009369 } from '@/utils/analysis.js'
 import ThreeStickmanView from '@/components/ThreeStickmanView.vue'
 import { AUTH_API, RADAR_WS_URL } from '@/config/radarApi'
@@ -157,30 +156,29 @@ import sessionManager from '@/utils/login/sessionManager'
 import { binaryToString } from '@/utils/binaryToString'
 import { parseCompressedPcloud } from '@/utils/parse_compressed_pcloud'
 import { buildNearestRadarPersonRows, getFloorOriginXZFromRadarParams } from '@/utils/radarPersonMetrics'
-import { createShowroomScenario } from '@/utils/showroomScenario'
-import { debugLog, highFrequencyLog } from '@/utils/debugLog'
+import { ACTION_TO_SCENARIO, SCENARIO_AC_COMMANDS, SCENARIO_BROADCAST_ID, createShowroomScenario } from '@/utils/showroomScenario'
+import { debugLog, highFrequencyLog, isTvPerformanceMode } from '@/utils/debugLog'
 import { Capacitor, CapacitorHttp } from '@capacitor/core'
 import { showToast } from 'vant'
 
-let isReverse = {}
-let player = {}
-let parser = {}
-let isLoadFile = {}
-let range = {}
 const radarTrackIds = ref([])
 const latestKpts = ref([])
+const latestTrackPositions = ref([])
+const latestDistancesToRadar = ref([])
 const latestActions = ref([])
 const latestPointCloud = ref([])
 const radarParams = ref({})
 const roomConfig = ref({ width: 5, depth: 5 })
+const emptyRadarData = Object.freeze([])
+const pointCloudParseStep = isTvPerformanceMode ? 2 : 1
 const showLoginPanel = ref(false)
 const showTestPanel = ref(false)
 const radarLoginForm = reactive({
-  username: localStorage.getItem('radarLoginUsername') || 'taoyiping',
-  password: localStorage.getItem('radarLoginPassword') || 'typ19951028',
-  sn: localStorage.getItem('radarMqttSn') || 'D348009930TEST00WN19MNN2',
-  deviceId: localStorage.getItem('radarDeviceId') || 'A1W2512K52T1ACKCVYTB',
-  mqttCid: localStorage.getItem('mqttCid') || 'b448226a1b104435',
+  username: localStorage.getItem('radarLoginUsername') || 'fengxia',
+  password: localStorage.getItem('radarLoginPassword') || '1234567890',
+  sn: localStorage.getItem('radarMqttSn') || 'D348010096TEST00RADAR623',
+  deviceId: localStorage.getItem('radarDeviceId') || 'A2W26041S9MD332401I7',
+  mqttCid: localStorage.getItem('mqttCid') || 'adc7d89ef6e04a20',
 })
 const deviceLanHost = ref(
   (localStorage.getItem('deviceLanHost') || import.meta.env.VITE_LOCAL_DEVICE_HOST || '').trim()
@@ -194,16 +192,44 @@ let radarInitTimeoutId = null
 let radarReconnectTimer = null
 let radarReconnectAttempt = 0
 let radarManualDisconnect = false
+let lastPointCloudFrameAt = 0
 const MAX_RECONNECT_ATTEMPTS = 10
 const RECONNECT_BASE_DELAY = 1000
+const POINT_CLOUD_STALE_MS = isTvPerformanceMode ? 3000 : 1200
 
 const resetRadarState = () => {
   radarTrackIds.value = []
   latestKpts.value = []
+  latestTrackPositions.value = []
+  latestDistancesToRadar.value = []
   latestActions.value = []
   latestPointCloud.value = []
+  lastPointCloudFrameAt = 0
   radarParams.value = {}
   roomConfig.value = { width: 5, depth: 5 }
+}
+
+const getRadarPointCloudHex = (data) => {
+  if (typeof data?.rawpc === 'string' && data.rawpc !== '') return data.rawpc
+  if (typeof data?.rawmmpc === 'string' && data.rawmmpc !== '') return data.rawmmpc
+  return ''
+}
+
+const alignRadarFrameArray = (incoming, previous, previousTrackIds, nextTrackIds) => {
+  if (!Array.isArray(nextTrackIds)) {
+    return Array.isArray(incoming) ? incoming : previous
+  }
+  if (Array.isArray(incoming)) {
+    return incoming.slice(0, nextTrackIds.length)
+  }
+  if (!Array.isArray(previous) || previous.length === 0) {
+    return []
+  }
+  const oldIds = Array.isArray(previousTrackIds) ? previousTrackIds : []
+  return nextTrackIds.map((trackId, index) => {
+    const oldIndex = oldIds.findIndex((oldTrackId) => String(oldTrackId) === String(trackId))
+    return oldIndex >= 0 ? previous[oldIndex] : previous[index]
+  })
 }
 
 const connectRadarWs = (deviceId, token = '') => {
@@ -256,13 +282,37 @@ const connectRadarWs = (deviceId, token = '') => {
         if (data.code !== 200 || data.track_id || data.kpts) {
           // console.log('[雷达] 消息:', JSON.stringify(data).substring(0, 300))
         }
-        if (Array.isArray(data.track_id)) radarTrackIds.value = data.track_id
-        if (Array.isArray(data.kpts)) latestKpts.value = data.kpts
-        if (Array.isArray(data.action) && data.action.length > 0) latestActions.value = data.action
-        if (data.rawpc != null && data.rawpc !== '') {
-          latestPointCloud.value = parseCompressedPcloud(data.rawpc, 5)
+        if (Array.isArray(data.track_id)) {
+          const previousTrackIds = radarTrackIds.value
+          const nextTrackIds = data.track_id
+          radarTrackIds.value = nextTrackIds
+          latestKpts.value = alignRadarFrameArray(data.kpts, latestKpts.value, previousTrackIds, nextTrackIds)
+          latestTrackPositions.value = alignRadarFrameArray(
+            data.track_pos,
+            latestTrackPositions.value,
+            previousTrackIds,
+            nextTrackIds,
+          )
+          latestDistancesToRadar.value = Array.isArray(data.Dis2Radar)
+            ? alignRadarFrameArray(data.Dis2Radar, latestDistancesToRadar.value, previousTrackIds, nextTrackIds)
+            : []
+          latestActions.value = alignRadarFrameArray(data.action, latestActions.value, previousTrackIds, nextTrackIds)
         } else {
+          if (Array.isArray(data.kpts)) latestKpts.value = data.kpts
+          if (Array.isArray(data.track_pos)) latestTrackPositions.value = data.track_pos
+          if (Array.isArray(data.Dis2Radar)) latestDistancesToRadar.value = data.Dis2Radar
+          if (Array.isArray(data.action)) latestActions.value = data.action
+        }
+        const pointCloudHex = getRadarPointCloudHex(data)
+        if (pointCloudHex) {
+          const parsedPointCloud = parseCompressedPcloud(pointCloudHex, 5, pointCloudParseStep)
+          if (parsedPointCloud.length > 0) {
+            latestPointCloud.value = parsedPointCloud
+            lastPointCloudFrameAt = Date.now()
+          }
+        } else if (lastPointCloudFrameAt > 0 && Date.now() - lastPointCloudFrameAt > POINT_CLOUD_STALE_MS) {
           latestPointCloud.value = []
+          lastPointCloudFrameAt = 0
         }
         if (data.RadarParams) {
           const r = data.RadarParams
@@ -408,7 +458,8 @@ const handleLoginAndConnect = async () => {
   try {
     const hashedPassword = await toSha256(password)
     const isNative = Capacitor.isNativePlatform()
-    const loginUrl = isNative ? AUTH_API.LOGIN_PASSWORD : AUTH_API.LOGIN_PASSWORD_PROXY
+    // dev server/local static 走代理，线上网页直连；原生 HTTP 插件始终用完整 URL。
+    const loginUrl = isNative ? AUTH_API.LOGIN_PASSWORD : AUTH_API.LOGIN_PASSWORD_FOR_RUNTIME
     debugLog('[雷达] 登录请求 (平台:', isNative ? '原生' : '网页', ') URL:', loginUrl)
     let res
     if (isNative) {
@@ -468,77 +519,8 @@ const handleLoginAndConnect = async () => {
 const getImageUrl = (fullName) => {
   return new URL(`../../assets/imgs/${fullName}`, import.meta.url).href
 }
-const excutePlayer = (playObj, item) => {
-  // 执行动画
-  if (devData.value.swing_mode != 0) {
-    // 如果不为扫风，svga动画调换到指定角度
-    const _a = devData.value.swing_mode == 2 ? transfromAngel(item.angel) : item.angel
-    let frameNum = Math.ceil((_a - 50) / 2) //风向（区域），0：左，1：中，2：右
-    playObj.stepToFrame(frameNum, false)
-  } else {
-    range[item.swing_leaf].location = item.wind_area == 3 ? 0 : item.wind_area * 13
-    range[item.swing_leaf].length = item.wind_area == 3 ? 49 : 14
-    playObj.startAnimationWithRange(range[item.swing_leaf], isReverse[item.swing_leaf])
-  }
-}
-
-const playSvga = () => {
-  sgvaObj.forEach((item) => {
-    player[item.swing_leaf] = player[item.swing_leaf] || new SVGA.Player('#' + item.swing_leaf)
-    parser[item.swing_leaf] = parser[item.swing_leaf] || new SVGA.Parser()
-    range[item.swing_leaf] = { location: 0, length: 42 }
-    player[item.swing_leaf].loops = 1
-    if (isLoadFile[item.swing_leaf]) {
-      // 若已加载文件，则直接执行
-      excutePlayer(player[item.swing_leaf], item)
-    } else {
-      parser[item.swing_leaf].load(item.url, (videoItem) => {
-        player[item.swing_leaf].setVideoItem(videoItem)
-        isLoadFile[item.swing_leaf] = true // 是否加载svga文件
-        excutePlayer(player[item.swing_leaf], item)
-      })
-    }
-
-    player[item.swing_leaf].onFinished(() => {
-      //动画停止播放时回调
-      isReverse[item.swing_leaf] = !isReverse[item.swing_leaf]
-      player[item.swing_leaf].clear()
-      setTimeout(() => {
-        player[item.swing_leaf].startAnimationWithRange(range[item.swing_leaf], isReverse[item.swing_leaf])
-      }, 10)
-    })
-    player[item.swing_leaf].onFrame((number) => {
-      //动画播放至某帧后回调
-      // console.log('--onFrame--' + number)
-    })
-    player[item.swing_leaf].onPercentage((number) => {
-      //动画播放至某进度后回调
-      // console.log('--onPercentage--' + number)
-    })
-  })
-}
-
-const windModeArr = ['风随人动', '风避人吹', '人近风柔']
 const windSpeedArr = ['自动风', '微风', '低风', '中风', '高风', '强劲风']
 
-const transfromAngel = (angle) => {
-  if (angle <= 90) {
-    angle = angle + 45
-  } else if (angle > 90 && angle <= 135) {
-    angle = angle - 45
-  }
-  return angle //空调摆叶摆动位置
-}
-let sgvaObj = [
-  {
-    swing_leaf: 'svgaUp',
-    url: './svga/up_single.svga',
-  },
-  {
-    swing_leaf: 'svgaDown',
-    url: './svga/down_single.svga',
-  },
-]
 let devData = ref({
   json_seq: 2, //数据包编号，0~65535
   id_num: 2, //检测到的人数，0-3人
@@ -565,19 +547,35 @@ let devData = ref({
 })
 
 const radarPersonCount = computed(() => {
-  const t = radarTrackIds.value?.length ?? 0
-  if (t > 0) return t
-  return latestKpts.value?.length ?? 0
+  if (radarTrackIds.value?.length > 0) {
+    return radarTrackIds.value.length
+  }
+  return Math.max(
+    radarTrackIds.value?.length ?? 0,
+    latestKpts.value?.length ?? 0,
+    latestTrackPositions.value?.length ?? 0,
+    latestDistancesToRadar.value?.length ?? 0,
+  )
 })
 
 /** 雷达已连接且 0 人：右侧隐藏扇形，左侧扇形向前 + 灰色 */
 const radarNoPerson = computed(() => radarConnected.value && radarPersonCount.value === 0)
+const hasPointCloudFrame = computed(() => Array.isArray(latestPointCloud.value) && latestPointCloud.value.length > 0)
+const showPointCloudPanel = computed(() => hasPointCloudFrame.value || !radarNoPerson.value)
 
 const radarFloorOriginXZ = computed(() => getFloorOriginXZFromRadarParams(radarParams.value, roomConfig.value?.depth ?? 5))
 
 const nearestRadarTargets = computed(() => {
   const depth = roomConfig.value?.depth ?? 5
-  return buildNearestRadarPersonRows(latestKpts.value, radarTrackIds.value, depth, 3, radarFloorOriginXZ.value)
+  return buildNearestRadarPersonRows(
+    latestKpts.value,
+    radarTrackIds.value,
+    depth,
+    3,
+    radarFloorOriginXZ.value,
+    latestTrackPositions.value,
+    latestDistancesToRadar.value,
+  )
 })
 
 const displayRadarSourceIndices = computed(() => {
@@ -629,22 +627,33 @@ const formatRadarRowDistance = (row) => {
   return `${row.distanceM.toFixed(2)}m`
 }
 
+const formatRadarRowAngle = (row) => {
+  if (!row || typeof row.angel !== 'number' || !Number.isFinite(row.angel)) return '—'
+  return `${row.angel}°`
+}
+
 /** 右侧雷达列表按距离升序，第 1 条为 01（最近），第 3 条为 03（最远） */
 const formatRadarRankByIndex = (index) => String(index + 1).padStart(2, '0')
 
-const windTimer = ref(null)
 const windModeImgLeft = ref('')
 const windModeImgRight = ref('')
+const windPersonCount = computed(() => {
+  if (radarConnected.value) return radarPersonCount.value
+  return devData.value.data_array?.length ?? 0
+})
+const windEffectActive = computed(() => {
+  return !!(devData.value.power && windModeImgLeft.value && windModeImgRight.value)
+})
 const showfengYe = () => {
   let imgNameLeft = ''
   let imgNameRight = ''
   let imgNameLeftLast = devData.value.speed > 2 ? 'Strong.png' : 'Weak.png'
   let imgNameRightLast = devData.value.speed > 2 ? 'Strong.png' : 'Weak.png'
-  //left_swing_area：左边摆叶（0--100） right_swing_area：右边摆叶（0--100）
-  //devData.value.swing_mode == 0说明当前没有运行风随人动那些模式，不显示摆叶
+  // left_swing_area：左边摆叶（0--100） right_swing_area：右边摆叶（0--100）
+  // 普通出风默认显示中间风效；风随人/风避人等模式按摆风区域切换方向。
   if (devData.value.swing_mode == 0) {
-    imgNameLeft = ''
-    imgNameRight = ''
+    imgNameLeft = 'L_M'
+    imgNameRight = 'R_M'
   } else if (devData.value.right_swing_area == 100 && devData.value.left_swing_area == 100) {
     imgNameLeft = 'L_L' //最大角度
     imgNameRight = 'R_R' //最大角度
@@ -662,7 +671,7 @@ const showfengYe = () => {
   }
   // 风避人吹时
   if (devData.value.swing_mode == 2) {
-    if (devData.value.data_array.length == 2) {
+    if (windPersonCount.value >= 2) {
       //双人场景 1、风避人吹时都是短风+弱风
       imgNameLeftLast = 'Weak.png'
       imgNameRightLast = 'Weak.png'
@@ -670,7 +679,7 @@ const showfengYe = () => {
         imgNameLeft = 'L_LSmall' //最大角度,但是风只有一半
         imgNameRight = 'R_RSmall' //最大角度,但是风只有一半
       }
-    } else if (devData.value.data_array.length == 1) {
+    } else if (windPersonCount.value == 1) {
       //单人场景1、风避人吹时人在左或右，一个强风一个弱风，中间的时候两边角度最大两边都是弱风+短风
       if (devData.value.right_swing_area < 50 && devData.value.left_swing_area > 50) {
         //整体往左吹
@@ -696,18 +705,109 @@ const showfengYe = () => {
   }
 }
 
+const getDominantAction = (actions) => {
+  if (!Array.isArray(actions) || actions.length === 0) return null
+  const counter = new Map()
+  for (const action of actions) counter.set(action, (counter.get(action) || 0) + 1)
+  let dominant = null
+  let max = 0
+  for (const [action, count] of counter) {
+    if (count > max) {
+      dominant = action
+      max = count
+    }
+  }
+  return dominant
+}
+
+const getWindPreviewAngle = () => {
+  const deviceTarget = devData.value.data_array?.[0]
+  if (Number.isFinite(deviceTarget?.angel)) return deviceTarget.angel
+
+  const radarAngle = nearestRadarTargets.value?.[0]?.angel
+  if (!Number.isFinite(radarAngle)) return 90
+  if (radarAngle >= 160 && radarAngle <= 200) return 90
+  return radarAngle > 180 ? 60 : 120
+}
+
+const applyPreviewSwingAreas = (swingMode) => {
+  if (windPersonCount.value >= 2) {
+    devData.value.left_swing_area = 100
+    devData.value.right_swing_area = 100
+    return
+  }
+
+  const angle = getWindPreviewAngle()
+  if (angle < 80) {
+    devData.value.left_swing_area = swingMode == 2 ? 0 : 100
+    devData.value.right_swing_area = swingMode == 2 ? 100 : 0
+  } else if (angle > 100) {
+    devData.value.left_swing_area = swingMode == 2 ? 100 : 0
+    devData.value.right_swing_area = swingMode == 2 ? 0 : 100
+  } else {
+    devData.value.left_swing_area = swingMode == 2 ? 100 : 0
+    devData.value.right_swing_area = swingMode == 2 ? 100 : 0
+  }
+}
+
+const applyLocalScenarioPreview = (scenario) => {
+  const cmd = SCENARIO_AC_COMMANDS[scenario]
+  if (!cmd) return
+  if (cmd.mark !== undefined) devData.value.speed = cmd.mark
+  if (cmd.settemp !== undefined) devData.value.set_temper = cmd.settemp
+  devData.value.power = 1
+
+  if (cmd.radarWindFollowPeople == 1) {
+    devData.value.swing_mode = 1
+  } else if (cmd.radarWindAvoidPeople == 1) {
+    devData.value.swing_mode = 2
+  } else if (cmd.radarPeopleNearSoftWind == 1) {
+    devData.value.swing_mode = 3
+  } else if (cmd.radarWindFollowPeople == 0 || cmd.radarWindAvoidPeople == 0 || cmd.radarPeopleNearSoftWind == 0) {
+    devData.value.swing_mode = 0
+  }
+
+  if (devData.value.swing_mode != 0) {
+    applyPreviewSwingAreas(devData.value.swing_mode)
+  }
+  showfengYe()
+}
+
 // ==================== 计算属性 ====================
 
-const radarActionLabel = computed(() => {
+const currentRadarActionLabel = computed(() => {
   const actions = latestActions.value
   if (!actions || actions.length === 0) return ''
+  // 只展示允许的动作：3=挥拳, 4=静坐, 6=下蹲, 8=平躺
+  const ALLOWED = new Set([3, 4, 6, 8])
+  const filtered = actions.filter(a => ALLOWED.has(a))
+  if (filtered.length === 0) return ''
   // 取主导动作（出现最多的）
   const counter = new Map()
-  for (const a of actions) counter.set(a, (counter.get(a) || 0) + 1)
-  let dominant = 2, max = 0
+  for (const a of filtered) counter.set(a, (counter.get(a) || 0) + 1)
+  let dominant = 4, max = 0
   for (const [a, c] of counter) { if (c > max) { max = c; dominant = a } }
-  const map = { 0: '走动', 1: '跑步', 2: '站着', 3: '挥手', 4: '静坐', 5: '起身', 6: '下蹲', 7: '跌倒', 8: '平躺' }
+  const map = { 3: '挥拳', 4: '静坐', 5: '起身', 6: '下蹲', 8: '平躺' }
   return map[dominant] || ''
+})
+const radarActionLabel = ref('')
+let radarActionLabelTimer = null
+
+const clearRadarActionLabelTimer = () => {
+  if (radarActionLabelTimer) {
+    clearTimeout(radarActionLabelTimer)
+    radarActionLabelTimer = null
+  }
+}
+
+watch(currentRadarActionLabel, (label) => {
+  if (!label) return
+  radarActionLabel.value = label
+  clearRadarActionLabelTimer()
+  radarActionLabelTimer = setTimeout(() => {
+    radarActionLabel.value = ''
+    radarActionLabelTimer = null
+  }, 5000)
 })
 
 const peopleBg = computed(() => {
@@ -765,20 +865,25 @@ const getPeopleTop = (item) => {
   const topVw = ((top - 318) / 38.4).toFixed(2)
   return topVw + 'vw' //转化UI的top距离
 }
-const startPlay = () => {
-  sgvaObj[0].wind_area = devData.value.left_swing_area
-  sgvaObj[1].wind_area = devData.value.right_swing_area
-  playSvga()
+const refreshWindEffect = () => {
+  showfengYe()
 }
-// 停止播放
-const clearPlay = () => {
-  for (let i in player) {
-    player[i].stopAnimation()
-  }
-}
+
+watch(
+  () => [
+    devData.value.power,
+    devData.value.speed,
+    devData.value.swing_mode,
+    devData.value.left_swing_area,
+    devData.value.right_swing_area,
+    windPersonCount.value,
+  ],
+  refreshWindEffect,
+  { immediate: true },
+)
+
 const timer = ref(null)
 onMounted(() => {
-  // startPlay();
   const hasToken = !!sessionManager.getToken()
   const hasDeviceId = !!radarLoginForm.deviceId.trim()
   debugLog('hasToken',hasToken,'hasDeviceId',hasDeviceId)
@@ -802,10 +907,8 @@ onMounted(() => {
   }
 })
 onUnmounted(() => {
+  clearRadarActionLabelTimer()
   clearInterval(timer.value)
-  if (windTimer.value) {
-    clearInterval(windTimer.value)
-  }
   disconnectRadarWs()
   deviceStore.disconnectMqtt()
 })
@@ -914,14 +1017,14 @@ const mqttConnected = computed(() => deviceStore.mqttConnected)
 const testScenarios = [
   { key: 'sitting',  label: '静坐', hint: 'AC: 26°C低风 | 播报:65003' },
   { key: 'lying',    label: '平躺', hint: 'AC: 27°C微风 | 播报:65004' },
-  { key: 'waving',   label: '挥手', hint: 'AC: 高风循环 | 播报:65005' },
+  { key: 'waving',   label: '挥拳', hint: 'AC: 高风循环 | 播报:65005' },
   { key: 'squatting', label: '下蹲', hint: 'AC: 风避人 | 播报:65006' },
-  { key: 'standing', label: '起身', hint: 'AC: 风避人 | 播报:65007' },
 ]
 
 function handleTestSend(scenario) {
   const cmd = SCENARIO_AC_COMMANDS[scenario]
   const broadcastId = SCENARIO_BROADCAST_ID[scenario]
+  applyLocalScenarioPreview(scenario)
   if (cmd) {
     deviceStore.sendCommand(cmd)
     debugLog('[测试] AC指令:', scenario, cmd)
@@ -942,6 +1045,7 @@ const showroom = createShowroomScenario(
 watch(
   () => latestActions.value,
   (actions) => {
+    applyLocalScenarioPreview(ACTION_TO_SCENARIO[getDominantAction(actions)])
     showroom.handleActions(actions)
   },
 )
@@ -971,11 +1075,6 @@ const getPeopleData = (arr) => {
   }
   devData.value.data_array = devArr
 }
-// watch(() => [devData.value.up_swing_area, devData.value.low_swing_area], (newValue, oldVaule) => {
-// 重新渲染
-// console.log(newValue, oldVaule, 'chongxinxuanra');
-// setTimeout(() => { startPlay() }, 500);
-// })
 </script>
 
 <style lang="scss">
@@ -1205,6 +1304,17 @@ const getPeopleData = (arr) => {
     .ml {
       margin-left: -5px !important;
     }
+    @keyframes windFieldPulse {
+      0%,
+      100% {
+        opacity: 0.78;
+        filter: brightness(1);
+      }
+      50% {
+        opacity: 1;
+        filter: brightness(1.18);
+      }
+    }
     .windAreaQuanYuBottom {
       height: 1428px;
       position: absolute;
@@ -1213,6 +1323,10 @@ const getPeopleData = (arr) => {
       z-index: 103;
       //top: 14.5%;
       //margin-left: -5px;
+    }
+    .windAreaQuanYuBottomActive {
+      animation: windFieldPulse 2.2s ease-in-out infinite;
+      will-change: opacity, filter;
     }
     .grid_wind_area {
       height: 430px;
@@ -1229,7 +1343,7 @@ const getPeopleData = (arr) => {
       font-size: 72px;
       font-weight: 600;
       color: #01ffff;
-      z-index: 102;
+      z-index: 106;
       top: 80%;
     }
     .windModeBgImg {
@@ -1347,14 +1461,6 @@ const getPeopleData = (arr) => {
       width: 646px;
       height: 646px;
     }
-  }
-
-  .wind_svga {
-    position: fixed;
-    width: 2580px;
-    height: 1900px;
-    top: -20px;
-    left: 0px;
   }
 
   .wind_mode_area {
@@ -1477,10 +1583,10 @@ const getPeopleData = (arr) => {
     color: #c2f9ff;
     font-weight: 300;
   }
-
+  //让雷达点云数据显示靠下一点
   .heat_list {
     position: fixed;
-    top: 52%;
+    top: 45%;
 
     .heat_item {
       width: 1000px;
@@ -1505,7 +1611,9 @@ const getPeopleData = (arr) => {
         font-weight: 500;
       }
       .itemDistance {
-        margin-left: 40px;
+        position: absolute;
+        right: 16px;
+        // margin-left: 40px;
         font-size: 60px;
         font-weight: 500;
       }
@@ -1515,7 +1623,7 @@ const getPeopleData = (arr) => {
       }
 
       .item_line {
-        margin-left: 50px;
+        // margin-left: 50px;
         width: 2px;
         height: 48px;
         background: #17f4f2;
