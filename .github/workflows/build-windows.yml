@@ -33,7 +33,6 @@ jobs:
 
       - name: Build Windows package (${{ github.event.inputs.environment }})
         run: |
-          rm -rf www
           npx vite build --mode ${{ github.event.inputs.environment }}
           npx electron-builder --win --publish=never
 
