@@ -15,7 +15,10 @@
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"vite --mode dev\" \"npm run electron:start\"",
     "electron:start": "wait-on -t 120000 tcp:127.0.0.1:1573 && npx electron .",
-    "electron:build": "vite build --mode pro && electron-builder"
+    "electron:build": "vite build --mode pro && electron-builder",
+    "electron:build:mac": "vite build --mode pro && electron-builder --mac",
+    "electron:build:mac:dmg": "vite build --mode pro && electron-builder --mac dmg",
+    "electron:build:win": "vite build --mode pro && electron-builder --win"
   },
   "dependencies": {
     "@better-scroll/core": "2.5.0",
@@ -75,17 +78,41 @@
     "directories": {
       "output": "build-electron"
     },
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "files": [
       "electron/**/*",
       "www/controllPage/html/**/*",
       "package.json"
     ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "identity": null,
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
     "win": {
       "executableName": "MillimeterWaveRadar",
       "signAndEditExecutable": false,
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     }
   }
