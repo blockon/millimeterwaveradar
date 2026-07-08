@@ -6,6 +6,8 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -23,11 +25,13 @@ jobs:
       - name: Build Windows package
         run: npm run electron:build:win -- --publish=never
 
-      - name: Upload Windows package
-        uses: actions/upload-artifact@v4
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: millimeter-wave-radar-windows
-          path: |
+          tag_name: build-${{ github.run_number }}
+          name: Windows Build #${{ github.run_number }}
+          body: |
+            毫米波雷达 Windows 桌面版
+            构建时间: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          files: |
             build-electron/*.exe
-            build-electron/win-unpacked/**
-          if-no-files-found: error
