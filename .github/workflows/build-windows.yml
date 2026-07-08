@@ -1,7 +1,16 @@
 name: Build Windows Desktop
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 构建环境
+        type: choice
+        options:
+          - test
+          - dev
+          - pro
+        default: test
 
 jobs:
   build-windows:
@@ -22,16 +31,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Windows package
-        run: npm run electron:build:win -- --publish=never
+      - name: Build Windows package (${{ github.event.inputs.environment }})
+        run: |
+          rm -rf www
+          npx vite build --mode ${{ github.event.inputs.environment }}
+          npx electron-builder --win --publish=never
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Windows Build #${{ github.run_number }}
+          tag_name: build-${{ github.environment || github.event.inputs.environment }}-${{ github.run_number }}
+          name: Windows ${{ github.event.inputs.environment }} #${{ github.run_number }}
           body: |
             毫米波雷达 Windows 桌面版
+            环境: ${{ github.event.inputs.environment }}
             构建时间: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           files: |
             build-electron/*.exe
