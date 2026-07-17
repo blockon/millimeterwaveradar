@@ -705,21 +705,6 @@ const showfengYe = () => {
   }
 }
 
-const getDominantAction = (actions) => {
-  if (!Array.isArray(actions) || actions.length === 0) return null
-  const counter = new Map()
-  for (const action of actions) counter.set(action, (counter.get(action) || 0) + 1)
-  let dominant = null
-  let max = 0
-  for (const [action, count] of counter) {
-    if (count > max) {
-      dominant = action
-      max = count
-    }
-  }
-  return dominant
-}
-
 const getWindPreviewAngle = () => {
   const deviceTarget = devData.value.data_array?.[0]
   if (Number.isFinite(deviceTarget?.angel)) return deviceTarget.angel
@@ -775,20 +760,22 @@ const applyLocalScenarioPreview = (scenario) => {
 
 // ==================== 计算属性 ====================
 
+const RADAR_ACTION_LABELS = Object.freeze({
+  3: '挥拳',
+  4: '静坐',
+  8: '平躺',
+})
+
+/** 姿态展示和语音联动仅使用距离雷达最近的人 */
+const nearestRadarAction = computed(() => {
+  const sourceIndex = nearestRadarTargets.value?.[0]?.sourceIndex
+  if (!Number.isInteger(sourceIndex) || sourceIndex < 0) return null
+  const action = Number(latestActions.value?.[sourceIndex])
+  return Number.isFinite(action) ? action : null
+})
+
 const currentRadarActionLabel = computed(() => {
-  const actions = latestActions.value
-  if (!actions || actions.length === 0) return ''
-  // 只展示允许的动作：3=挥拳, 4=静坐, 6=下蹲, 8=平躺
-  const ALLOWED = new Set([3, 4, 6, 8])
-  const filtered = actions.filter(a => ALLOWED.has(a))
-  if (filtered.length === 0) return ''
-  // 取主导动作（出现最多的）
-  const counter = new Map()
-  for (const a of filtered) counter.set(a, (counter.get(a) || 0) + 1)
-  let dominant = 4, max = 0
-  for (const [a, c] of counter) { if (c > max) { max = c; dominant = a } }
-  const map = { 3: '挥拳', 4: '静坐', 5: '起身', 6: '下蹲', 8: '平躺' }
-  return map[dominant] || ''
+  return RADAR_ACTION_LABELS[nearestRadarAction.value] || ''
 })
 const radarActionLabel = ref('')
 let radarActionLabelTimer = null
@@ -801,7 +788,11 @@ const clearRadarActionLabelTimer = () => {
 }
 
 watch(currentRadarActionLabel, (label) => {
-  if (!label) return
+  if (!label) {
+    radarActionLabel.value = ''
+    clearRadarActionLabelTimer()
+    return
+  }
   radarActionLabel.value = label
   clearRadarActionLabelTimer()
   radarActionLabelTimer = setTimeout(() => {
@@ -1018,7 +1009,6 @@ const testScenarios = [
   { key: 'sitting',  label: '静坐', hint: 'AC: 26°C低风 | 播报:65003' },
   { key: 'lying',    label: '平躺', hint: 'AC: 27°C微风 | 播报:65004' },
   { key: 'waving',   label: '挥拳', hint: 'AC: 高风循环 | 播报:65005' },
-  { key: 'squatting', label: '下蹲', hint: 'AC: 风避人 | 播报:65006' },
 ]
 
 function handleTestSend(scenario) {
@@ -1041,12 +1031,14 @@ const showroom = createShowroomScenario(
   (json) => deviceStore.sendBroadcast(json),
 )
 
-/** 监听雷达 action 变化，触发展厅场景联动 */
+/** 监听最近人的姿态变化，触发展厅场景联动 */
 watch(
-  () => latestActions.value,
-  (actions) => {
-    applyLocalScenarioPreview(ACTION_TO_SCENARIO[getDominantAction(actions)])
-    showroom.handleActions(actions)
+  nearestRadarAction,
+  (action) => {
+    const scenario = RADAR_ACTION_LABELS[action] ? ACTION_TO_SCENARIO[action] : null
+    if (!scenario) return
+    applyLocalScenarioPreview(scenario)
+    showroom.handleActions([action])
   },
 )
 
