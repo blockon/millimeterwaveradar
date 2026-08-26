@@ -88,6 +88,7 @@
               :show-point-cloud="false"
               :show-sector-floor="true"
               :sector-floor-idle="radarNoPerson"
+              :enable-controls="false"
               skeleton-mode="stickman" />
           </div>
         </div>

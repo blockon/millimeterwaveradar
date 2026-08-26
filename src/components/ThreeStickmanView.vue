@@ -18,6 +18,7 @@ const props = defineProps({
   skeletonMode: { type: String, default: "stickman" },
   showSectorFloor: { type: Boolean, default: true },
   sectorFloorIdle: { type: Boolean, default: false },
+  enableControls: { type: Boolean, default: true },
   performanceMode: { type: Boolean, default: null },
 })
 
@@ -75,6 +76,7 @@ onMounted(() => {
     roomWidth: props.roomConfig.width,
     roomDepth: props.roomConfig.depth,
     renderMode: props.skeletonMode === "stickman" ? "stickman" : "model",
+    enableControls: props.enableControls,
     performanceMode: performanceModeEnabled.value,
   })
   animationId = requestAnimationFrame(animate)

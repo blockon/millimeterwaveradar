@@ -79,6 +79,7 @@ export class StickmanScene {
     this.camera.lookAt(0, 1, 0)
 
     this.controls = new OrbitControls(this.camera, this.canvas)
+    this.controls.enabled = this.config.enableControls !== false
     this.controls.enableDamping = true
     this.controls.dampingFactor = 0.25
     this.controls.target.set(0, 1, 0)
