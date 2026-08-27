@@ -178,7 +178,7 @@ const radarLoginForm = reactive({
   username: localStorage.getItem('radarLoginUsername') || 'fengxia',
   password: localStorage.getItem('radarLoginPassword') || '1234567890',
   sn: localStorage.getItem('radarMqttSn') || 'D348010096TEST00RADAR623',
-  deviceId: localStorage.getItem('radarDeviceId') || 'A2W26041S9MD332401I7',
+  deviceId: localStorage.getItem('radarDeviceId') || 'A1W2512K52T1ACKCVYTB',
   mqttCid: localStorage.getItem('mqttCid') || 'adc7d89ef6e04a20',
 })
 const deviceLanHost = ref(
