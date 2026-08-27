@@ -181,7 +181,7 @@ export const deviceStore = defineStore('deviceStore', {
           console.error('[deviceStore] secretKey 为空，无法加密指令')
           return
         }
-        const order = window.JsFunction.toDevice(json)
+        let order = window.JsFunction.toDevice(json)
         if (!order) {
           console.error('[deviceStore] toDevice 转换失败，原始指令:', json)
           return

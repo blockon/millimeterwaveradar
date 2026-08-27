@@ -51,6 +51,11 @@ export default ({ mode }) => {
     env.VITE_LOCAL_DEVICE_API_BASE || `http://${deviceHost}:${devicePort}`
   return defineConfig({
     base: './',
+    optimizeDeps: {
+      // 只扫描项目自身的入口 HTML，避免把 android/、build-electron/ 等目录下的
+      // 旧构建产物（含 esbuild 在 bundle 模式下报错的 const 重新赋值代码）纳入依赖预扫描
+      entries: [resolve(__dirname, 'index.html')],
+    },
     build: {
       outDir,
       rollupOptions: {
