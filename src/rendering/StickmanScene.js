@@ -2,18 +2,18 @@ import * as THREE from "three"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
-import { LineSegments2 } from "three/addons/lines/LineSegments2.js"
-import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js"
-import { LineMaterial } from "three/addons/lines/LineMaterial.js"
 import { BoneController } from "@/utils/BoneController"
-import {
-  COCO_ORDER,
-  COCO_SKELETON_EDGES,
-  COCO_EDGE_PART,
-  STICKMAN_PART_COLORS,
-  JOINT_PART,
-} from "@/constants/cocoKpts"
+import { COCO_ORDER } from "@/constants/cocoKpts"
 import { horizontalDistanceFromOriginXZ, kptJointToSceneXZ } from "@/utils/radarPersonMetrics"
+
+// 低多边形数字人的基础尺寸（米）。人体比例仍由雷达的 COCO 17 关键点实时决定。
+const HUMANOID_MIN_LIMB_LENGTH = 1e-4
+const _UP = new THREE.Vector3(0, 1, 0)
+const _limbDir = new THREE.Vector3()
+const _bodyRight = new THREE.Vector3()
+const _bodyUp = new THREE.Vector3()
+const _bodyForward = new THREE.Vector3()
+const _bodyMatrix = new THREE.Matrix4()
 
 export class StickmanScene {
   constructor(canvas, config = {}) {
@@ -593,57 +593,60 @@ export class StickmanScene {
 
   getOrCreateStickmanLines(id) {
     if (this.stickmanMap.has(id)) return this.stickmanMap.get(id)
-    const edgeCount = COCO_SKELETON_EDGES.length
-    const positions = new Float32Array(edgeCount * 6)
-    const colors = new Float32Array(edgeCount * 6)
-    for (let e = 0; e < edgeCount; e++) {
-      const [r, g, b] = STICKMAN_PART_COLORS[COCO_EDGE_PART[e]] || STICKMAN_PART_COLORS.arms
-      const i = e * 6
-      colors[i] = r
-      colors[i + 1] = g
-      colors[i + 2] = b
-      colors[i + 3] = r
-      colors[i + 4] = g
-      colors[i + 5] = b
-    }
-    const geom = new LineSegmentsGeometry()
-    geom.setPositions(positions)
-    geom.setColors(colors)
-    const mat = new LineMaterial({ linewidth: 5, worldUnits: false, vertexColors: true })
-    const lineSegments = new LineSegments2(geom, mat)
     const group = new THREE.Group()
-    group.add(lineSegments)
-    const headGeom = new THREE.CylinderGeometry(0.09, 0.09, 0.02, 24)
-    const headMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color().setRGB(...STICKMAN_PART_COLORS.head),
-      side: THREE.DoubleSide,
-    })
-    const headCircle = new THREE.Mesh(headGeom, headMat)
-    headCircle.visible = false
-    group.add(headCircle)
+    const makeMaterial = (color) =>
+      new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.02 })
+    const materials = {
+      skin: makeMaterial(0xd8a07a),
+      hair: makeMaterial(0x35261f),
+      shirt: makeMaterial(0x5b7cfa),
+      pants: makeMaterial(0x263a68),
+      shoes: makeMaterial(0xf1f4f8),
+    }
+    const parts = {}
+    const addPart = (name, geometry, material) => {
+      const mesh = new THREE.Mesh(geometry, material)
+      mesh.castShadow = this.config.enableShadows
+      mesh.receiveShadow = this.config.enableShadows
+      mesh.frustumCulled = false
+      mesh.visible = false
+      parts[name] = mesh
+      group.add(mesh)
+      return mesh
+    }
 
-    const jointRadius = 0.025
-    const jointGeom = new THREE.SphereGeometry(jointRadius, 12, 12)
-    const chestJoints = new THREE.InstancedMesh(
-      jointGeom,
-      new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(...STICKMAN_PART_COLORS.chest) }),
-      4
+    addPart("torso", new THREE.CylinderGeometry(1, 0.72, 1, 14), materials.shirt)
+    addPart("pelvis", new THREE.SphereGeometry(1, 14, 10), materials.pants)
+    addPart("neck", new THREE.CylinderGeometry(0.82, 1, 1, 12), materials.skin)
+    addPart("head", new THREE.SphereGeometry(1, 18, 14), materials.skin)
+    addPart("hair", new THREE.SphereGeometry(1, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.58), materials.hair)
+    addPart("nose", new THREE.SphereGeometry(1, 10, 8), materials.skin)
+
+    ;["leftUpperArm", "rightUpperArm"].forEach((name) =>
+      addPart(name, new THREE.CylinderGeometry(0.78, 1, 1, 12), materials.shirt)
     )
-    const armJoints = new THREE.InstancedMesh(
-      jointGeom.clone(),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(...STICKMAN_PART_COLORS.arms) }),
-      4
+    ;["leftForearm", "rightForearm"].forEach((name) =>
+      addPart(name, new THREE.CylinderGeometry(0.72, 1, 1, 12), materials.skin)
     )
-    const legJoints = new THREE.InstancedMesh(
-      jointGeom.clone(),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color().setRGB(...STICKMAN_PART_COLORS.legs) }),
-      4
+    ;["leftThigh", "rightThigh"].forEach((name) =>
+      addPart(name, new THREE.CylinderGeometry(0.72, 1, 1, 12), materials.pants)
     )
-    ;[chestJoints, armJoints, legJoints].forEach((m) => {
-      m.count = 0
-      m.visible = false
-      group.add(m)
-    })
+    ;["leftShin", "rightShin"].forEach((name) =>
+      addPart(name, new THREE.CylinderGeometry(0.68, 1, 1, 12), materials.pants)
+    )
+    ;["leftElbow", "rightElbow"].forEach((name) =>
+      addPart(name, new THREE.SphereGeometry(1, 12, 10), materials.skin)
+    )
+    ;["leftKnee", "rightKnee"].forEach((name) =>
+      addPart(name, new THREE.SphereGeometry(1, 12, 10), materials.pants)
+    )
+    ;["leftHand", "rightHand"].forEach((name) =>
+      addPart(name, new THREE.SphereGeometry(1, 12, 10), materials.skin)
+    )
+    ;["leftFoot", "rightFoot"].forEach((name) =>
+      addPart(name, new THREE.SphereGeometry(1, 12, 8), materials.shoes)
+    )
+
     const { root: labelRoot, cap: labelCap } = this._createStickmanDistanceLabelDOM()
     const distanceLabel = new CSS2DObject(labelRoot)
     distanceLabel.visible = false
@@ -651,12 +654,7 @@ export class StickmanScene {
     this.scene.add(group)
     this.stickmanMap.set(id, {
       stickmanLines: group,
-      lineGeom: geom,
-      positions,
-      edgeCount,
-      headCircle,
-      jointPoints: { chest: chestJoints, arms: armJoints, legs: legJoints },
-      _jointDummy: new THREE.Object3D(),
+      humanoidParts: parts,
       distanceLabel,
       distanceLabelTextEl: labelCap,
     })
@@ -768,64 +766,134 @@ export class StickmanScene {
     data._lastPersonData = null
   }
 
-  updateStickmanLinesFromPersonData(data, personData) {
-    const n = Math.min(17, personData[0]?.length ?? 0, personData[1]?.length ?? 0, personData[2]?.length ?? 0)
-    if (n < 2) {
-      if (data.distanceLabel) data.distanceLabel.visible = false
+  _fitHumanoidLimb(mesh, start, end, radius) {
+    _limbDir.subVectors(end, start)
+    const length = _limbDir.length()
+    if (length < HUMANOID_MIN_LIMB_LENGTH) {
+      mesh.visible = false
       return
     }
-    const positions = data.positions
-    for (let e = 0; e < data.edgeCount; e++) {
-      const [a, b] = COCO_SKELETON_EDGES[e]
-      if (a >= n || b >= n) continue
-      const va = this.kptToScene(personData, a)
-      const vb = this.kptToScene(personData, b)
-      const i = e * 6
-      positions[i] = va.x
-      positions[i + 1] = va.y + 1
-      positions[i + 2] = va.z
-      positions[i + 3] = vb.x
-      positions[i + 4] = vb.y + 1
-      positions[i + 5] = vb.z
-    }
-    const attr = data.lineGeom.attributes.instanceStart
-    if (attr) attr.needsUpdate = true
+    mesh.position.addVectors(start, end).multiplyScalar(0.5)
+    mesh.quaternion.setFromUnitVectors(_UP, _limbDir.normalize())
+    mesh.scale.set(radius, length, radius)
+    mesh.visible = this.skeletonVisible
+  }
 
-    const headCircle = data.headCircle
-    if (headCircle) {
-      const pose = this.computeHeadPose(personData)
-      if (pose) {
-        headCircle.position.copy(pose.center)
-        const defaultUp = new THREE.Vector3(0, 1, 0)
-        headCircle.quaternion.setFromUnitVectors(defaultUp, pose.forward)
-        headCircle.visible = true
-      } else {
-        headCircle.visible = false
-      }
+  _placeHumanoidJoint(mesh, position, scale, quaternion = null) {
+    mesh.position.copy(position)
+    mesh.scale.copy(scale)
+    if (quaternion) mesh.quaternion.copy(quaternion)
+    else mesh.quaternion.identity()
+    mesh.visible = this.skeletonVisible
+  }
+
+  updateStickmanLinesFromPersonData(data, personData) {
+    const n = Math.min(17, personData[0]?.length ?? 0, personData[1]?.length ?? 0, personData[2]?.length ?? 0)
+    const parts = data.humanoidParts
+    if (n < 17 || !parts) {
+      if (data.distanceLabel) data.distanceLabel.visible = false
+      if (parts) Object.values(parts).forEach((mesh) => (mesh.visible = false))
+      return
+    }
+    const point = (index) => {
+      const value = this.kptToScene(personData, index)
+      value.y += 1
+      return value
+    }
+    const leftShoulder = point(5)
+    const rightShoulder = point(6)
+    const leftElbow = point(7)
+    const rightElbow = point(8)
+    const leftWrist = point(9)
+    const rightWrist = point(10)
+    const leftHip = point(11)
+    const rightHip = point(12)
+    const leftKnee = point(13)
+    const rightKnee = point(14)
+    const leftAnkle = point(15)
+    const rightAnkle = point(16)
+    const shoulderCenter = new THREE.Vector3().addVectors(leftShoulder, rightShoulder).multiplyScalar(0.5)
+    const hipCenter = new THREE.Vector3().addVectors(leftHip, rightHip).multiplyScalar(0.5)
+    const shoulderWidth = Math.max(0.24, leftShoulder.distanceTo(rightShoulder))
+    const hipWidth = Math.max(0.18, leftHip.distanceTo(rightHip))
+    const torsoLength = Math.max(0.3, shoulderCenter.distanceTo(hipCenter))
+    const pose = this.computeHeadPose(personData)
+
+    _bodyRight.subVectors(rightShoulder, leftShoulder).normalize()
+    _bodyUp.subVectors(shoulderCenter, hipCenter).normalize()
+    _bodyForward.crossVectors(_bodyRight, _bodyUp).normalize()
+    if (_bodyForward.lengthSq() < 1e-6) _bodyForward.set(0, 0, 1)
+    if (pose && _bodyForward.dot(pose.forward) < 0) {
+      _bodyForward.multiplyScalar(-1)
+      _bodyRight.multiplyScalar(-1)
+    }
+    _bodyUp.crossVectors(_bodyForward, _bodyRight).normalize()
+    _bodyMatrix.makeBasis(_bodyRight, _bodyUp, _bodyForward)
+    const bodyQuaternion = new THREE.Quaternion().setFromRotationMatrix(_bodyMatrix)
+
+    parts.torso.position.addVectors(shoulderCenter, hipCenter).multiplyScalar(0.5)
+    parts.torso.quaternion.copy(bodyQuaternion)
+    parts.torso.scale.set(shoulderWidth * 0.52, torsoLength, shoulderWidth * 0.25)
+    parts.torso.visible = this.skeletonVisible
+    this._placeHumanoidJoint(
+      parts.pelvis,
+      hipCenter,
+      new THREE.Vector3(hipWidth * 0.6, torsoLength * 0.16, hipWidth * 0.38),
+      bodyQuaternion
+    )
+
+    if (pose) {
+      const headRadius = THREE.MathUtils.clamp(shoulderWidth * 0.3, 0.095, 0.145)
+      this._placeHumanoidJoint(
+        parts.head,
+        pose.center,
+        new THREE.Vector3(headRadius * 0.82, headRadius, headRadius * 0.78),
+        bodyQuaternion
+      )
+      const neckEnd = pose.center.clone().addScaledVector(_bodyUp, -headRadius * 0.72)
+      this._fitHumanoidLimb(parts.neck, shoulderCenter, neckEnd, headRadius * 0.34)
+      const hairCenter = pose.center.clone().addScaledVector(_bodyUp, headRadius * 0.12)
+      this._placeHumanoidJoint(
+        parts.hair,
+        hairCenter,
+        new THREE.Vector3(headRadius * 0.86, headRadius * 1.02, headRadius * 0.82),
+        bodyQuaternion
+      )
+      const faceForward = pose.forward.clone().normalize()
+      this._placeHumanoidJoint(
+        parts.nose,
+        pose.center.clone().addScaledVector(faceForward, headRadius * 0.8),
+        new THREE.Vector3(headRadius * 0.12, headRadius * 0.16, headRadius * 0.12)
+      )
+    } else {
+      ;[parts.head, parts.neck, parts.hair, parts.nose].forEach((mesh) => (mesh.visible = false))
     }
 
-    const joints = data.jointPoints
-    const jointDummy = data._jointDummy
-    if (joints && jointDummy) {
-      const counts = { chest: 0, arms: 0, legs: 0 }
-      for (let i = 5; i < n && i < 17; i++) {
-        const part = JOINT_PART[i] || "arms"
-        const mesh = joints[part]
-        if (!mesh) continue
-        const v = this.kptToScene(personData, i)
-        jointDummy.position.set(v.x, v.y + 1, v.z)
-        jointDummy.scale.setScalar(1)
-        jointDummy.updateMatrix()
-        mesh.setMatrixAt(counts[part], jointDummy.matrix)
-        counts[part]++
-      }
-      ;["chest", "arms", "legs"].forEach((part) => {
-        const mesh = joints[part]
-        mesh.count = counts[part]
-        mesh.instanceMatrix.needsUpdate = true
-        mesh.visible = counts[part] > 0 && this.skeletonVisible
-      })
-    }
+    const armRadius = THREE.MathUtils.clamp(shoulderWidth * 0.105, 0.032, 0.052)
+    const legRadius = THREE.MathUtils.clamp(hipWidth * 0.19, 0.045, 0.075)
+    this._fitHumanoidLimb(parts.leftUpperArm, leftShoulder, leftElbow, armRadius * 1.08)
+    this._fitHumanoidLimb(parts.rightUpperArm, rightShoulder, rightElbow, armRadius * 1.08)
+    this._fitHumanoidLimb(parts.leftForearm, leftElbow, leftWrist, armRadius * 0.86)
+    this._fitHumanoidLimb(parts.rightForearm, rightElbow, rightWrist, armRadius * 0.86)
+    this._fitHumanoidLimb(parts.leftThigh, leftHip, leftKnee, legRadius * 1.08)
+    this._fitHumanoidLimb(parts.rightThigh, rightHip, rightKnee, legRadius * 1.08)
+    this._fitHumanoidLimb(parts.leftShin, leftKnee, leftAnkle, legRadius * 0.82)
+    this._fitHumanoidLimb(parts.rightShin, rightKnee, rightAnkle, legRadius * 0.82)
+
+    const jointScale = new THREE.Vector3(armRadius * 0.9, armRadius * 0.9, armRadius * 0.9)
+    this._placeHumanoidJoint(parts.leftElbow, leftElbow, jointScale)
+    this._placeHumanoidJoint(parts.rightElbow, rightElbow, jointScale)
+    const kneeScale = new THREE.Vector3(legRadius * 0.9, legRadius * 0.82, legRadius * 0.92)
+    this._placeHumanoidJoint(parts.leftKnee, leftKnee, kneeScale)
+    this._placeHumanoidJoint(parts.rightKnee, rightKnee, kneeScale)
+    const handScale = new THREE.Vector3(armRadius * 0.82, armRadius * 1.25, armRadius * 0.62)
+    this._placeHumanoidJoint(parts.leftHand, leftWrist, handScale)
+    this._placeHumanoidJoint(parts.rightHand, rightWrist, handScale)
+    const footScale = new THREE.Vector3(legRadius * 0.9, legRadius * 0.58, legRadius * 1.65)
+    const leftFootPosition = leftAnkle.clone().addScaledVector(_bodyForward, legRadius * 0.5)
+    const rightFootPosition = rightAnkle.clone().addScaledVector(_bodyForward, legRadius * 0.5)
+    this._placeHumanoidJoint(parts.leftFoot, leftFootPosition, footScale, bodyQuaternion)
+    this._placeHumanoidJoint(parts.rightFoot, rightFootPosition, footScale, bodyQuaternion)
 
     data._lastPersonData = personData
     this._syncStickmanDistanceLabel(data, personData)
