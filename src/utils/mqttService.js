@@ -259,8 +259,9 @@ export function createMqttConnection({
   async function fetchSecretKey(sn) {
     if (_keyCache[sn]) return _keyCache[sn]
     try {
+      const gatewayBase = (import.meta.env.VITE_BASE_GATEWAYURL || 'https://test-envsplit.mymlsoft.com').replace(/\/$/, '')
       const res = await fetch(
-        'https://test-envsplit.mymlsoft.com/gateway/acmini/api/acDevice/safeSecret',
+        `${gatewayBase}/gateway/acmini/api/acDevice/safeSecret`,
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ skey: sn }) }
       )
       const json = await res.json()
