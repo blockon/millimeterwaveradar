@@ -67,8 +67,8 @@
       </div>
 
       <!-- 摆风区域 -->
-      <div class="wind_area">
-        <img class="img_pro" :src="devImg" />
+      <div ref="windAreaRef" class="wind_area">
+        <img ref="deviceImageRef" class="img_pro" :src="devImg" />
         <div v-if="devData.power">
           <img v-if="windModeImgLeft" :src="windModeImgLeft" class="windAreaQuanYuBottom" :class="{ windAreaQuanYuBottomActive: windEffectActive }" />
           <img v-if="windModeImgRight" :src="windModeImgRight" class="windAreaQuanYuBottom" :class="{ windAreaQuanYuBottomActive: windEffectActive }" />
@@ -76,7 +76,7 @@
           <img src="@img/windModeBg.png" class="windModeBgImg" />
         </div>
         <!-- 网格区域 -->
-        <div class="grid_area">
+        <div ref="sectorAreaRef" class="grid_area">
           <div class="radar_skeleton_layer">
             <ThreeStickmanView
               :kpts-data="displayKptsData"
@@ -89,6 +89,7 @@
               :show-sector-floor="true"
               :sector-floor-idle="radarNoPerson"
               :enable-controls="false"
+              :fixed-view-aspect="1.25"
               skeleton-mode="stickman" />
           </div>
         </div>
@@ -638,6 +639,33 @@ const formatRadarRankByIndex = (index) => String(index + 1).padStart(2, '0')
 
 const windModeImgLeft = ref('')
 const windModeImgRight = ref('')
+const windAreaRef = ref(null)
+const deviceImageRef = ref(null)
+const sectorAreaRef = ref(null)
+const SECTOR_DEVICE_GAP_PX = 0
+let sectorLayoutObserver = null
+let sectorLayoutFrame = null
+
+const syncSectorLayout = () => {
+  const windArea = windAreaRef.value
+  const deviceImage = deviceImageRef.value
+  const sectorArea = sectorAreaRef.value
+  if (!windArea || !deviceImage || !sectorArea) return
+
+  const windAreaRect = windArea.getBoundingClientRect()
+  const deviceImageRect = deviceImage.getBoundingClientRect()
+  const sectorTop = deviceImageRect.bottom - windAreaRect.top + SECTOR_DEVICE_GAP_PX
+  sectorArea.style.top = `${sectorTop}px`
+}
+
+const scheduleSectorLayout = () => {
+  if (sectorLayoutFrame != null) cancelAnimationFrame(sectorLayoutFrame)
+  sectorLayoutFrame = requestAnimationFrame(() => {
+    sectorLayoutFrame = null
+    syncSectorLayout()
+  })
+}
+
 const windPersonCount = computed(() => {
   if (radarConnected.value) return radarPersonCount.value
   return devData.value.data_array?.length ?? 0
@@ -876,6 +904,14 @@ watch(
 
 const timer = ref(null)
 onMounted(() => {
+  scheduleSectorLayout()
+  window.addEventListener('resize', scheduleSectorLayout)
+  if (typeof ResizeObserver !== 'undefined') {
+    sectorLayoutObserver = new ResizeObserver(scheduleSectorLayout)
+    if (windAreaRef.value) sectorLayoutObserver.observe(windAreaRef.value)
+    if (deviceImageRef.value) sectorLayoutObserver.observe(deviceImageRef.value)
+  }
+
   const hasToken = !!sessionManager.getToken()
   const hasDeviceId = !!radarLoginForm.deviceId.trim()
   debugLog('hasToken',hasToken,'hasDeviceId',hasDeviceId)
@@ -899,6 +935,11 @@ onMounted(() => {
   }
 })
 onUnmounted(() => {
+  window.removeEventListener('resize', scheduleSectorLayout)
+  sectorLayoutObserver?.disconnect()
+  sectorLayoutObserver = null
+  if (sectorLayoutFrame != null) cancelAnimationFrame(sectorLayoutFrame)
+  sectorLayoutFrame = null
   clearRadarActionLabelTimer()
   clearInterval(timer.value)
   disconnectRadarWs()
@@ -1399,7 +1440,8 @@ const getPeopleData = (arr) => {
       height: 2500px;
       width: 2500px;
       margin-left: -20px;
-      top: 600px;
+      // mounted 后会根据设备图实际底边重算，保留设计稿坐标作为首屏兜底值。
+      top: 620px;
       transform: translateX(-50%);
       left: 50%;
       z-index: 100;

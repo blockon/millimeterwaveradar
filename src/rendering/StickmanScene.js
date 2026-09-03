@@ -36,6 +36,7 @@ export class StickmanScene {
       pointCloudSphereSegments: performanceMode ? 6 : 10,
       pointCloudRenderMode: performanceMode ? "points" : "mesh",
       pointCloudPointSize: performanceMode ? 0.06 : 0.04,
+      fixedViewAspect: null,
       ...config,
     }
     this.scene = null
@@ -99,6 +100,8 @@ export class StickmanScene {
       if (!canvasParent.style.position) canvasParent.style.position = "relative"
       canvasParent.appendChild(lrEl)
     }
+
+    this.applyViewport(this.config.width, this.config.height)
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.4)
     dirLight.position.set(5, 10, 6)
@@ -508,7 +511,7 @@ export class StickmanScene {
       map: texture,
       transparent: true,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
     })
     const sprite = new THREE.Sprite(material)
     const scale = 0.0036
@@ -564,7 +567,7 @@ export class StickmanScene {
       `,
       transparent: true,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
       side: THREE.DoubleSide,
     })
     const mesh = new THREE.Mesh(geometry, material)
@@ -965,10 +968,68 @@ export class StickmanScene {
   handleResize(width, height) {
     this.config.width = width
     this.config.height = height
-    this.camera.aspect = width / height
-    this.camera.updateProjectionMatrix()
     this.renderer.setSize(width, height)
-    if (this.labelRenderer) this.labelRenderer.setSize(width, height)
+    this.applyViewport(width, height)
+  }
+
+  getViewport(width, height) {
+    const fixedAspect = Number(this.config.fixedViewAspect)
+    if (!Number.isFinite(fixedAspect) || fixedAspect <= 0 || width <= 0 || height <= 0) {
+      return { x: 0, y: 0, width, height }
+    }
+
+    const containerAspect = width / height
+    if (containerAspect > fixedAspect) {
+      const viewportWidth = height * fixedAspect
+      return {
+        x: (width - viewportWidth) / 2,
+        y: 0,
+        width: viewportWidth,
+        height,
+      }
+    }
+
+    const viewportHeight = width / fixedAspect
+    return {
+      x: 0,
+      y: (height - viewportHeight) / 2,
+      width,
+      height: viewportHeight,
+    }
+  }
+
+  applyViewport(width, height) {
+    if (!this.renderer || !this.camera || width <= 0 || height <= 0) return
+
+    const viewport = this.getViewport(width, height)
+    const viewportAspect = viewport.width / viewport.height
+
+    this.camera.aspect = viewportAspect
+    this.camera.updateProjectionMatrix()
+
+    const hasFixedAspect = viewport.width !== width || viewport.height !== height
+    if (hasFixedAspect) {
+      // 清理上一次 viewport 残留，再在固定比例区域内渲染，避免不同窗口比例拉伸扇形。
+      this.renderer.setScissorTest(false)
+      this.renderer.setViewport(0, 0, width, height)
+      this.renderer.setScissor(0, 0, width, height)
+      this.renderer.clear()
+      this.renderer.setScissor(viewport.x, viewport.y, viewport.width, viewport.height)
+      this.renderer.setViewport(viewport.x, viewport.y, viewport.width, viewport.height)
+      this.renderer.setScissorTest(true)
+    } else {
+      this.renderer.setScissorTest(false)
+      this.renderer.setViewport(0, 0, width, height)
+    }
+
+    if (this.labelRenderer) {
+      this.labelRenderer.setSize(viewport.width, viewport.height)
+      const labelElement = this.labelRenderer.domElement
+      labelElement.style.left = `${viewport.x}px`
+      labelElement.style.top = `${viewport.y}px`
+      labelElement.style.width = `${viewport.width}px`
+      labelElement.style.height = `${viewport.height}px`
+    }
   }
 
   _disposeObject(obj) {

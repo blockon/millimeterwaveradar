@@ -19,6 +19,7 @@ const props = defineProps({
   showSectorFloor: { type: Boolean, default: true },
   sectorFloorIdle: { type: Boolean, default: false },
   enableControls: { type: Boolean, default: true },
+  fixedViewAspect: { type: Number, default: null },
   performanceMode: { type: Boolean, default: null },
 })
 
@@ -77,6 +78,7 @@ onMounted(() => {
     roomDepth: props.roomConfig.depth,
     renderMode: props.skeletonMode === "stickman" ? "stickman" : "model",
     enableControls: props.enableControls,
+    fixedViewAspect: props.fixedViewAspect,
     performanceMode: performanceModeEnabled.value,
   })
   animationId = requestAnimationFrame(animate)
