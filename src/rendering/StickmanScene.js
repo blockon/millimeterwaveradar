@@ -600,10 +600,9 @@ export class StickmanScene {
     const makeMaterial = (color) =>
       new THREE.MeshStandardMaterial({ color, roughness: 0.72, metalness: 0.02 })
     const materials = {
-      skin: makeMaterial(0xd8a07a),
-      hair: makeMaterial(0x35261f),
-      shirt: makeMaterial(0x5b7cfa),
-      pants: makeMaterial(0x263a68),
+      skin: makeMaterial(0xdce5ee),
+      shirt: makeMaterial(0x8199b5),
+      pants: makeMaterial(0x6f849e),
       shoes: makeMaterial(0xf1f4f8),
     }
     const parts = {}
@@ -618,12 +617,11 @@ export class StickmanScene {
       return mesh
     }
 
-    addPart("torso", new THREE.CylinderGeometry(1, 0.72, 1, 14), materials.shirt)
+    // 中性人偶采用接近直筒的轮廓，避免倒三角上身和具象性别特征。
+    addPart("torso", new THREE.CylinderGeometry(0.96, 0.92, 1, 18), materials.shirt)
     addPart("pelvis", new THREE.SphereGeometry(1, 14, 10), materials.pants)
     addPart("neck", new THREE.CylinderGeometry(0.82, 1, 1, 12), materials.skin)
     addPart("head", new THREE.SphereGeometry(1, 18, 14), materials.skin)
-    addPart("hair", new THREE.SphereGeometry(1, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.58), materials.hair)
-    addPart("nose", new THREE.SphereGeometry(1, 10, 8), materials.skin)
 
     ;["leftUpperArm", "rightUpperArm"].forEach((name) =>
       addPart(name, new THREE.CylinderGeometry(0.78, 1, 1, 12), materials.shirt)
@@ -836,7 +834,7 @@ export class StickmanScene {
 
     parts.torso.position.addVectors(shoulderCenter, hipCenter).multiplyScalar(0.5)
     parts.torso.quaternion.copy(bodyQuaternion)
-    parts.torso.scale.set(shoulderWidth * 0.52, torsoLength, shoulderWidth * 0.25)
+    parts.torso.scale.set(shoulderWidth * 0.5, torsoLength, shoulderWidth * 0.24)
     parts.torso.visible = this.skeletonVisible
     this._placeHumanoidJoint(
       parts.pelvis,
@@ -850,32 +848,19 @@ export class StickmanScene {
       this._placeHumanoidJoint(
         parts.head,
         pose.center,
-        new THREE.Vector3(headRadius * 0.82, headRadius, headRadius * 0.78),
+        new THREE.Vector3(headRadius * 0.9, headRadius, headRadius * 0.86),
         bodyQuaternion
       )
       const neckEnd = pose.center.clone().addScaledVector(_bodyUp, -headRadius * 0.72)
-      this._fitHumanoidLimb(parts.neck, shoulderCenter, neckEnd, headRadius * 0.34)
-      const hairCenter = pose.center.clone().addScaledVector(_bodyUp, headRadius * 0.12)
-      this._placeHumanoidJoint(
-        parts.hair,
-        hairCenter,
-        new THREE.Vector3(headRadius * 0.86, headRadius * 1.02, headRadius * 0.82),
-        bodyQuaternion
-      )
-      const faceForward = pose.forward.clone().normalize()
-      this._placeHumanoidJoint(
-        parts.nose,
-        pose.center.clone().addScaledVector(faceForward, headRadius * 0.8),
-        new THREE.Vector3(headRadius * 0.12, headRadius * 0.16, headRadius * 0.12)
-      )
+      this._fitHumanoidLimb(parts.neck, shoulderCenter, neckEnd, headRadius * 0.29)
     } else {
-      ;[parts.head, parts.neck, parts.hair, parts.nose].forEach((mesh) => (mesh.visible = false))
+      ;[parts.head, parts.neck].forEach((mesh) => (mesh.visible = false))
     }
 
-    const armRadius = THREE.MathUtils.clamp(shoulderWidth * 0.105, 0.032, 0.052)
+    const armRadius = THREE.MathUtils.clamp(shoulderWidth * 0.095, 0.03, 0.048)
     const legRadius = THREE.MathUtils.clamp(hipWidth * 0.19, 0.045, 0.075)
-    this._fitHumanoidLimb(parts.leftUpperArm, leftShoulder, leftElbow, armRadius * 1.08)
-    this._fitHumanoidLimb(parts.rightUpperArm, rightShoulder, rightElbow, armRadius * 1.08)
+    this._fitHumanoidLimb(parts.leftUpperArm, leftShoulder, leftElbow, armRadius)
+    this._fitHumanoidLimb(parts.rightUpperArm, rightShoulder, rightElbow, armRadius)
     this._fitHumanoidLimb(parts.leftForearm, leftElbow, leftWrist, armRadius * 0.86)
     this._fitHumanoidLimb(parts.rightForearm, rightElbow, rightWrist, armRadius * 0.86)
     this._fitHumanoidLimb(parts.leftThigh, leftHip, leftKnee, legRadius * 1.08)
