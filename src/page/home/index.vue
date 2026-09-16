@@ -57,12 +57,12 @@
       <div class="wind_speed_num">
         <img
           class="running_anticlockwise"
-          :style="`animation-duration:${Math.abs(6 - devData.speed)}s`"
+          :style="`animation-duration:${Math.abs(6 - displayWindSpeed)}s`"
           :src="powerState"
           :class="{ noScan: devData.power == 0 }" />
         <div class="powertext center">
           <div class="wind_speed_str">{{ devData.power ? '开机' : '关机' }}</div>
-          <div class="wind_speed_hint" v-if="devData.power">{{ devData.set_temper / 10 }}℃ | {{ windSpeedArr[devData.speed] }}</div>
+          <div class="wind_speed_hint" v-if="devData.power">{{ devData.set_temper / 10 }}℃ | {{ windSpeedArr[displayWindSpeed] }}</div>
         </div>
       </div>
 
@@ -70,8 +70,8 @@
       <div ref="windAreaRef" class="wind_area">
         <img ref="deviceImageRef" class="img_pro" :src="devImg" />
         <div v-if="devData.power">
-          <img v-if="windModeImgLeft" :src="windModeImgLeft" class="windAreaQuanYuBottom" :class="{ windAreaQuanYuBottomActive: windEffectActive }" />
-          <img v-if="windModeImgRight" :src="windModeImgRight" class="windAreaQuanYuBottom" :class="{ windAreaQuanYuBottomActive: windEffectActive }" />
+          <img v-if="windModeImgLeft" :src="windModeImgLeft" :style="windBeamStyle('left')" class="windAreaQuanYuBottom" :class="{ windAreaQuanYuBottomActive: windEffectActive }" />
+          <img v-if="windModeImgRight" :src="windModeImgRight" :style="windBeamStyle('right')" class="windAreaQuanYuBottom" :class="{ windAreaQuanYuBottomActive: windEffectActive }" />
           <div class="windModeText">{{ radarActionLabel }}</div>
           <img src="@img/windModeBg.png" class="windModeBgImg" />
         </div>
@@ -94,6 +94,19 @@
           </div>
         </div>
       </div>
+      <!-- 雷达点云小窗：位于左侧扇形场景右下角 -->
+      <div class="radar_point_cloud_panel">
+        <div class="dev"></div>
+        <ThreeStickmanView
+          :kpts-data="emptyRadarData"
+          :track-ids="emptyRadarData"
+          :point-cloud-data="latestPointCloud"
+          :room-config="roomConfig"
+          :radar-params="radarParams"
+          :show-skeleton="false"
+          :show-point-cloud="true"
+          skeleton-mode="stickman" />
+      </div>
     </div>
     <!-- 右边-人体状态感知参数区域 -->
     <div class="page_right center">
@@ -105,18 +118,6 @@
         <div class="heat_num_str" :class="{ powerOffState: !rightPanelVisualActive }">
           {{ rightPanelPersonLabel }}
         </div>
-      </div>
-      <div class="radar_point_cloud_panel" v-show="showPointCloudPanel">
-        <div class="dev"></div>
-        <ThreeStickmanView
-          :kpts-data="emptyRadarData"
-          :track-ids="emptyRadarData"
-          :point-cloud-data="latestPointCloud"
-          :room-config="roomConfig"
-          :radar-params="radarParams"
-          :show-skeleton="false"
-          :show-point-cloud="true"
-          skeleton-mode="stickman" />
       </div>
       <!-- 未检测到人体 -->
       <div v-if="!hasRightPanelPeople" class="no_body">区域内暂未检测到人体</div>
@@ -158,7 +159,7 @@ import sessionManager from '@/utils/login/sessionManager'
 import { binaryToString } from '@/utils/binaryToString'
 import { parseCompressedPcloud } from '@/utils/parse_compressed_pcloud'
 import { buildNearestRadarPersonRows, getFloorOriginXZFromRadarParams } from '@/utils/radarPersonMetrics'
-import { ACTION_TO_SCENARIO, SCENARIO_AC_COMMANDS, SCENARIO_BROADCAST_ID, createShowroomScenario } from '@/utils/showroomScenario'
+import { WIND_MODE_LABELS, WIND_MODE_FIELDS, reportedWindMode, resolveRadarWind } from '@/utils/radarWindScenario'
 import { debugLog, highFrequencyLog, isTvPerformanceMode } from '@/utils/debugLog'
 import { Capacitor, CapacitorHttp } from '@capacitor/core'
 import { showToast } from 'vant'
@@ -562,8 +563,6 @@ const radarPersonCount = computed(() => {
 
 /** 雷达已连接且 0 人：右侧隐藏扇形，左侧扇形向前 + 灰色 */
 const radarNoPerson = computed(() => radarConnected.value && radarPersonCount.value === 0)
-const hasPointCloudFrame = computed(() => Array.isArray(latestPointCloud.value) && latestPointCloud.value.length > 0)
-const showPointCloudPanel = computed(() => hasPointCloudFrame.value || !radarNoPerson.value)
 
 const radarFloorOriginXZ = computed(() => getFloorOriginXZFromRadarParams(radarParams.value, roomConfig.value?.depth ?? 5))
 
@@ -674,6 +673,11 @@ const windEffectActive = computed(() => {
   return !!(devData.value.power && windModeImgLeft.value && windModeImgRight.value)
 })
 const showfengYe = () => {
+  if (radarWindPlan.value) {
+    windModeImgLeft.value = getImageUrl(radarWindPlan.value.left.image)
+    windModeImgRight.value = getImageUrl(radarWindPlan.value.right.image)
+    return
+  }
   let imgNameLeft = ''
   let imgNameRight = ''
   let imgNameLeftLast = devData.value.speed > 2 ? 'Strong.png' : 'Weak.png'
@@ -734,100 +738,30 @@ const showfengYe = () => {
   }
 }
 
-const getWindPreviewAngle = () => {
-  const deviceTarget = devData.value.data_array?.[0]
-  if (Number.isFinite(deviceTarget?.angel)) return deviceTarget.angel
-
-  const radarAngle = nearestRadarTargets.value?.[0]?.angel
-  if (!Number.isFinite(radarAngle)) return 90
-  if (radarAngle >= 160 && radarAngle <= 200) return 90
-  return radarAngle > 180 ? 60 : 120
-}
-
-const applyPreviewSwingAreas = (swingMode) => {
-  if (windPersonCount.value >= 2) {
-    devData.value.left_swing_area = 100
-    devData.value.right_swing_area = 100
-    return
-  }
-
-  const angle = getWindPreviewAngle()
-  if (angle < 80) {
-    devData.value.left_swing_area = swingMode == 2 ? 0 : 100
-    devData.value.right_swing_area = swingMode == 2 ? 100 : 0
-  } else if (angle > 100) {
-    devData.value.left_swing_area = swingMode == 2 ? 100 : 0
-    devData.value.right_swing_area = swingMode == 2 ? 0 : 100
-  } else {
-    devData.value.left_swing_area = swingMode == 2 ? 100 : 0
-    devData.value.right_swing_area = swingMode == 2 ? 100 : 0
-  }
-}
-
-const applyLocalScenarioPreview = (scenario) => {
-  const cmd = SCENARIO_AC_COMMANDS[scenario]
-  if (!cmd) return
-  if (cmd.mark !== undefined) devData.value.speed = cmd.mark
-  if (cmd.settemp !== undefined) devData.value.set_temper = cmd.settemp
-  devData.value.power = 1
-
-  if (cmd.radarWindFollowPeople == 1) {
-    devData.value.swing_mode = 1
-  } else if (cmd.radarWindAvoidPeople == 1) {
-    devData.value.swing_mode = 2
-  } else if (cmd.radarPeopleNearSoftWind == 1) {
-    devData.value.swing_mode = 3
-  } else if (cmd.radarWindFollowPeople == 0 || cmd.radarWindAvoidPeople == 0 || cmd.radarPeopleNearSoftWind == 0) {
-    devData.value.swing_mode = 0
-  }
-
-  if (devData.value.swing_mode != 0) {
-    applyPreviewSwingAreas(devData.value.swing_mode)
-  }
-  showfengYe()
-}
-
-// ==================== 计算属性 ====================
-
-const RADAR_ACTION_LABELS = Object.freeze({
-  3: '挥拳',
-  4: '静坐',
-  8: '平躺',
-})
-
-/** 姿态展示和语音联动仅使用距离雷达最近的人 */
+/** 多人沿用最近目标决定风速；位置采用画面中最近三人。 */
 const nearestRadarAction = computed(() => {
-  const sourceIndex = nearestRadarTargets.value?.[0]?.sourceIndex
-  if (!Number.isInteger(sourceIndex) || sourceIndex < 0) return null
-  const action = Number(latestActions.value?.[sourceIndex])
-  return Number.isFinite(action) ? action : null
+  const sourceIndex = nearestRadarTargets.value[0]?.sourceIndex
+  const action = latestActions.value[sourceIndex]
+  return action == null ? null : Number(action)
 })
-
-const currentRadarActionLabel = computed(() => {
-  return RADAR_ACTION_LABELS[nearestRadarAction.value] || ''
+const radarWindPlan = computed(() => {
+  if (!radarConnected.value || !devData.value.power) return null
+  const nearest = nearestRadarTargets.value[0]
+  const reportedDistance = latestDistancesToRadar.value[nearest?.sourceIndex]
+  return resolveRadarWind({
+    mode: devData.value.swing_mode,
+    targets: nearestRadarTargets.value,
+    action: nearestRadarAction.value,
+    distanceM: reportedDistance != null && Number.isFinite(Number(reportedDistance))
+      ? Number(reportedDistance) : nearest?.distanceM,
+  })
 })
-const radarActionLabel = ref('')
-let radarActionLabelTimer = null
-
-const clearRadarActionLabelTimer = () => {
-  if (radarActionLabelTimer) {
-    clearTimeout(radarActionLabelTimer)
-    radarActionLabelTimer = null
-  }
-}
-
-watch(currentRadarActionLabel, (label) => {
-  if (!label) {
-    radarActionLabel.value = ''
-    clearRadarActionLabelTimer()
-    return
-  }
-  radarActionLabel.value = label
-  clearRadarActionLabelTimer()
-  radarActionLabelTimer = setTimeout(() => {
-    radarActionLabel.value = ''
-    radarActionLabelTimer = null
-  }, 5000)
+const displayWindSpeed = computed(() => radarWindPlan.value?.speed ?? devData.value.speed)
+const radarActionLabel = computed(() => WIND_MODE_LABELS[devData.value.swing_mode] || '')
+const windBeamStyle = (side) => ({
+  transform: `scale(${radarWindPlan.value?.[side]?.scale ?? 1})`,
+  transformOrigin: `${side === 'left' ? 49.1 : 50.9}% 30%`,
+  animationDuration: displayWindSpeed.value > 2 ? '1.2s' : '2.2s',
 })
 
 const peopleBg = computed(() => {
@@ -897,6 +831,7 @@ watch(
     devData.value.left_swing_area,
     devData.value.right_swing_area,
     windPersonCount.value,
+    radarWindPlan.value,
   ],
   refreshWindEffect,
   { immediate: true },
@@ -940,7 +875,6 @@ onUnmounted(() => {
   sectorLayoutObserver = null
   if (sectorLayoutFrame != null) cancelAnimationFrame(sectorLayoutFrame)
   sectorLayoutFrame = null
-  clearRadarActionLabelTimer()
   clearInterval(timer.value)
   disconnectRadarWs()
   deviceStore.disconnectMqtt()
@@ -994,13 +928,7 @@ const applyDeviceReport = (reported) => {
   devData.value.left_swing_area =
     reported?.actAnglePositionForHordir !== undefined ? reported?.actAnglePositionForHordir : devData.value.left_swing_area
   devData.value.speed = reported?.mark !== undefined ? reported?.mark : devData.value.speed
-  if (reported?.radarWindFollowPeople == 0 || reported?.radarWindAvoidPeople == 0 || reported?.radarPeopleNearSoftWind == 0) {
-    devData.value.swing_mode = 0
-  }
-  if (reported?.radarWindFollowPeople == 1 || reported?.radarWindAvoidPeople == 1 || reported?.radarPeopleNearSoftWind == 1) {
-    devData.value.swing_mode =
-      reported?.radarWindFollowPeople == 1 ? 1 : reported?.radarWindAvoidPeople == 1 ? 2 : reported?.radarPeopleNearSoftWind == 1 ? 3 : 0
-  }
+  devData.value.swing_mode = reportedWindMode(devData.value.swing_mode, reported)
   devData.value.power = reported?.power !== undefined ? reported.power : devData.value.power
   devData.value.set_temper = reported?.settemp !== undefined ? reported?.settemp : devData.value.set_temper
   devData.value.id_num = reported?.radarTargetCount !== undefined ? reported?.radarTargetCount : devData.value.id_num
@@ -1047,42 +975,38 @@ watch(
 
 const mqttConnected = computed(() => deviceStore.mqttConnected)
 
-const testScenarios = [
-  { key: 'sitting',  label: '静坐', hint: 'AC: 26°C低风 | 播报:65003' },
-  { key: 'lying',    label: '平躺', hint: 'AC: 27°C微风 | 播报:65004' },
-  { key: 'waving',   label: '挥拳', hint: 'AC: 高风循环 | 播报:65005' },
-]
+const testScenarios = Object.entries(WIND_MODE_LABELS).map(([key, label]) => ({
+  key: Number(key), label, hint: '切换功能，风速随雷达姿态联动',
+}))
 
-function handleTestSend(scenario) {
-  const cmd = SCENARIO_AC_COMMANDS[scenario]
-  const broadcastId = SCENARIO_BROADCAST_ID[scenario]
-  applyLocalScenarioPreview(scenario)
-  if (cmd) {
-    deviceStore.sendCommand(cmd)
-    debugLog('[测试] AC指令:', scenario, cmd)
-  }
-  if (broadcastId) {
-    deviceStore.sendBroadcast({ broadcastid: broadcastId })
-    debugLog('[测试] 播报:', scenario, broadcastId)
-  }
+function handleTestSend(mode) {
+  const cmd = Object.fromEntries(Object.entries(WIND_MODE_FIELDS).map(([key, field]) => [field, Number(key) === mode ? 1 : 0]))
+  deviceStore.sendCommand(cmd)
 }
 
-// ==================== 展厅场景引擎 ====================
-const showroom = createShowroomScenario(
-  (cmd) => deviceStore.sendCommand(cmd),
-  (json) => deviceStore.sendBroadcast(json),
-)
-
-/** 监听最近人的姿态变化，触发展厅场景联动 */
+// 风速变化稳定后下发；不再通过姿态切换模式、温度或触发旧姿态播报。
+let windSpeedCommandTimer = null
 watch(
-  nearestRadarAction,
-  (action) => {
-    const scenario = RADAR_ACTION_LABELS[action] ? ACTION_TO_SCENARIO[action] : null
-    if (!scenario) return
-    applyLocalScenarioPreview(scenario)
-    showroom.handleActions([action])
+  [
+    () => radarWindPlan.value?.speed,
+    // 旧指令的延迟回报可能覆盖当前目标，实际风速变化后需要重新纠偏。
+    () => devData.value.speed,
+    () => devData.value.swing_mode,
+    () => devData.value.power,
+    mqttConnected,
+  ],
+  () => {
+    clearTimeout(windSpeedCommandTimer)
+    const speed = radarWindPlan.value?.speed
+    if (speed == null || !devData.value.power) return
+    windSpeedCommandTimer = setTimeout(() => {
+      if (radarWindPlan.value?.speed === speed && Number(devData.value.speed) !== speed) {
+        deviceStore.sendCommand({ mark: speed })
+      }
+    }, 500)
   },
 )
+onUnmounted(() => clearTimeout(windSpeedCommandTimer))
 
 const dealData = (data) => {
   let newStatusStr = js.fromDevice(data)
@@ -1243,6 +1167,7 @@ const getPeopleData = (arr) => {
 .page_left {
   width: 2640px;
   height: inherit;
+  position: relative;
 
   .wind_speed_num {
     position: fixed;
@@ -1523,6 +1448,26 @@ const getPeopleData = (arr) => {
       font-weight: 500;
     }
   }
+
+  /* 雷达点云小窗：视觉稿位于左侧扇形场景右下角，贴底边并压住模式标签条 */
+  .radar_point_cloud_panel {
+    position: absolute;
+    right: 62px;
+    bottom: 80px;
+    width: 712px;
+    height: 624px;
+    z-index: 200;
+    overflow: hidden;
+    // border-radius: 12px;
+    // border: 1px solid rgba(154, 224, 238, 0.35);
+    // background: rgba(6, 25, 34, 0.72);
+    border: 1px solid #02E3E4;
+    background: #000000;
+
+    .dev {
+      display: none;
+    }
+  }
 }
 
 .page_right {
@@ -1664,28 +1609,6 @@ const getPeopleData = (arr) => {
         background: #17f4f2;
         opacity: 0.4;
       }
-    }
-  }
-
-  .radar_point_cloud_panel {
-    position: absolute;
-    top: 45%;
-    width: 1800px;
-    height: 1200px;
-    border-radius: 0;
-    overflow: hidden;
-    border: none;
-    background: transparent;
-    .dev {
-      position: absolute;
-      left: 50%;
-      width: 42px;
-      height: 114px;
-      border-radius: 8px;
-      transform: translate(-50%, -50%);
-      top: 47%;
-      background: linear-gradient(180deg, rgba(92, 255, 255, 0) 0%, rgba(92, 255, 255, 0.8) 100%);
-      z-index: 1000;
     }
   }
 

@@ -11,6 +11,8 @@ declare global {
   const SCENARIO_BROADCAST_ID: typeof import('./utils/showroomScenario.js')['SCENARIO_BROADCAST_ID']
   const SCENARIO_VOICE: typeof import('./utils/showroomScenario.js')['SCENARIO_VOICE']
   const Tools: typeof import('./utils/tools.js')['Tools']
+  const WIND_MODE_FIELDS: typeof import('./utils/radarWindScenario.js')['WIND_MODE_FIELDS']
+  const WIND_MODE_LABELS: typeof import('./utils/radarWindScenario.js')['WIND_MODE_LABELS']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const binaryToString: typeof import('./utils/binaryToString.js')['binaryToString']
   const buildNearestRadarPersonRows: typeof import('./utils/radarPersonMetrics.js')['buildNearestRadarPersonRows']
@@ -74,11 +76,14 @@ declare global {
   const onUpdated: typeof import('vue')['onUpdated']
   const parseCompressedPcloud: typeof import('./utils/parse_compressed_pcloud.js')['parseCompressedPcloud']
   const provide: typeof import('vue')['provide']
+  const radarWindZone: typeof import('./utils/radarWindScenario.js')['radarWindZone']
   const reactive: typeof import('vue')['reactive']
   const readonly: typeof import('vue')['readonly']
   const ref: typeof import('vue')['ref']
+  const reportedWindMode: typeof import('./utils/radarWindScenario.js')['reportedWindMode']
   const resolveComponent: typeof import('vue')['resolveComponent']
   const resolveDirective: typeof import('vue')['resolveDirective']
+  const resolveRadarWind: typeof import('./utils/radarWindScenario.js')['resolveRadarWind']
   const setActivePinia: typeof import('pinia')['setActivePinia']
   const setMapStoreSuffix: typeof import('pinia')['setMapStoreSuffix']
   const shallowReactive: typeof import('vue')['shallowReactive']
@@ -125,6 +130,8 @@ declare module 'vue' {
     readonly SCENARIO_BROADCAST_ID: UnwrapRef<typeof import('./utils/showroomScenario.js')['SCENARIO_BROADCAST_ID']>
     readonly SCENARIO_VOICE: UnwrapRef<typeof import('./utils/showroomScenario.js')['SCENARIO_VOICE']>
     readonly Tools: UnwrapRef<typeof import('./utils/tools.js')['Tools']>
+    readonly WIND_MODE_FIELDS: UnwrapRef<typeof import('./utils/radarWindScenario.js')['WIND_MODE_FIELDS']>
+    readonly WIND_MODE_LABELS: UnwrapRef<typeof import('./utils/radarWindScenario.js')['WIND_MODE_LABELS']>
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>
     readonly binaryToString: UnwrapRef<typeof import('./utils/binaryToString.js')['binaryToString']>
     readonly buildNearestRadarPersonRows: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['buildNearestRadarPersonRows']>
@@ -188,11 +195,14 @@ declare module 'vue' {
     readonly onUpdated: UnwrapRef<typeof import('vue')['onUpdated']>
     readonly parseCompressedPcloud: UnwrapRef<typeof import('./utils/parse_compressed_pcloud.js')['parseCompressedPcloud']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
+    readonly radarWindZone: UnwrapRef<typeof import('./utils/radarWindScenario.js')['radarWindZone']>
     readonly reactive: UnwrapRef<typeof import('vue')['reactive']>
     readonly readonly: UnwrapRef<typeof import('vue')['readonly']>
     readonly ref: UnwrapRef<typeof import('vue')['ref']>
+    readonly reportedWindMode: UnwrapRef<typeof import('./utils/radarWindScenario.js')['reportedWindMode']>
     readonly resolveComponent: UnwrapRef<typeof import('vue')['resolveComponent']>
     readonly resolveDirective: UnwrapRef<typeof import('vue')['resolveDirective']>
+    readonly resolveRadarWind: UnwrapRef<typeof import('./utils/radarWindScenario.js')['resolveRadarWind']>
     readonly setActivePinia: UnwrapRef<typeof import('pinia')['setActivePinia']>
     readonly setMapStoreSuffix: UnwrapRef<typeof import('pinia')['setMapStoreSuffix']>
     readonly shallowReactive: UnwrapRef<typeof import('vue')['shallowReactive']>
