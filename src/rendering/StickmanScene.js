@@ -1,4 +1,5 @@
 import * as THREE from "three"
+import { RADAR_VIEW_ROTATION_DEG } from "./radarView.js"
 import { OrbitControls } from "three/addons/controls/OrbitControls.js"
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js"
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js"
@@ -85,7 +86,7 @@ export class StickmanScene {
     this.controls.dampingFactor = 0.25
     this.controls.target.set(0, 1, 0)
     // 通过相机轨道方式整体旋转视角，效果等同鼠标拖拽
-    this.rotateViewLikeDrag(45)
+    this.rotateViewLikeDrag(RADAR_VIEW_ROTATION_DEG)
 
     this.labelRenderer = new CSS2DRenderer()
     this.labelRenderer.setSize(this.config.width, this.config.height)

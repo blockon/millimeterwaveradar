@@ -1,3 +1,5 @@
+import { RADAR_VIEW_AZIMUTH_DEG } from '../rendering/radarView.js'
+
 /** 60GHz 新需求：姿态决定风速，功能模式始终由设备状态决定。 */
 export const WIND_MODE_LABELS = Object.freeze({ 1: '风随人动', 2: '风避人吹', 3: '人近风柔' })
 export const WIND_MODE_FIELDS = Object.freeze({ 1: 'radarWindFollowPeople', 2: 'radarWindAvoidPeople', 3: 'radarPeopleNearSoftWind' })
@@ -15,10 +17,11 @@ export function reportedWindMode(current, report) {
   return report[WIND_MODE_FIELDS[current]] == 0 ? 0 : current
 }
 
-// 保持现有雷达视角：160°～200°为中间，超过200°为左侧。
+// 按固定视角投影分区：视线前后轴的左右各 20°均属于画面中间。
 export function radarWindZone(angle) {
   if (typeof angle !== 'number' || !Number.isFinite(angle)) return null
-  if (angle >= 160 && angle <= 200) return 'middle'
+  angle = ((angle - RADAR_VIEW_AZIMUTH_DEG) % 360 + 360) % 360
+  if (angle <= 20 || angle >= 340 || (angle >= 160 && angle <= 200)) return 'middle'
   return angle > 180 ? 'left' : 'right'
 }
 
