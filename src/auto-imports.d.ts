@@ -6,6 +6,7 @@ declare global {
   const EffectScope: typeof import('vue')['EffectScope']
   const EventBus: typeof import('./utils/eventBus.js')['EventBus']
   const NativeActions: typeof import('./utils/nativeActions.js')['NativeActions']
+  const OCCUPANCY_PRESETS: typeof import('./utils/radarSimulation.js')['OCCUPANCY_PRESETS']
   const P_8009369: typeof import('./utils/analysis.js')['P_8009369']
   const SCENARIO_AC_COMMANDS: typeof import('./utils/showroomScenario.js')['SCENARIO_AC_COMMANDS']
   const SCENARIO_BROADCAST_ID: typeof import('./utils/showroomScenario.js')['SCENARIO_BROADCAST_ID']
@@ -17,6 +18,7 @@ declare global {
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const binaryToString: typeof import('./utils/binaryToString.js')['binaryToString']
   const buildNearestRadarPersonRows: typeof import('./utils/radarPersonMetrics.js')['buildNearestRadarPersonRows']
+  const buildSimulationFrame: typeof import('./utils/radarSimulation.js')['buildSimulationFrame']
   const commonApi: typeof import('./api/commonApi.js')['default']
   const computed: typeof import('vue')['computed']
   const createApp: typeof import('vue')['createApp']
@@ -90,6 +92,7 @@ declare global {
   const shallowReactive: typeof import('vue')['shallowReactive']
   const shallowReadonly: typeof import('vue')['shallowReadonly']
   const shallowRef: typeof import('vue')['shallowRef']
+  const simulationEnvironment: typeof import('./utils/radarSimulation.js')['simulationEnvironment']
   const storeToRefs: typeof import('pinia')['storeToRefs']
   const toRaw: typeof import('vue')['toRaw']
   const toRef: typeof import('vue')['toRef']
@@ -126,6 +129,7 @@ declare module 'vue' {
     readonly EffectScope: UnwrapRef<typeof import('vue')['EffectScope']>
     readonly EventBus: UnwrapRef<typeof import('./utils/eventBus.js')['EventBus']>
     readonly NativeActions: UnwrapRef<typeof import('./utils/nativeActions.js')['NativeActions']>
+    readonly OCCUPANCY_PRESETS: UnwrapRef<typeof import('./utils/radarSimulation.js')['OCCUPANCY_PRESETS']>
     readonly P_8009369: UnwrapRef<typeof import('./utils/analysis.js')['P_8009369']>
     readonly SCENARIO_AC_COMMANDS: UnwrapRef<typeof import('./utils/showroomScenario.js')['SCENARIO_AC_COMMANDS']>
     readonly SCENARIO_BROADCAST_ID: UnwrapRef<typeof import('./utils/showroomScenario.js')['SCENARIO_BROADCAST_ID']>
@@ -137,6 +141,7 @@ declare module 'vue' {
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>
     readonly binaryToString: UnwrapRef<typeof import('./utils/binaryToString.js')['binaryToString']>
     readonly buildNearestRadarPersonRows: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['buildNearestRadarPersonRows']>
+    readonly buildSimulationFrame: UnwrapRef<typeof import('./utils/radarSimulation.js')['buildSimulationFrame']>
     readonly commonApi: UnwrapRef<typeof import('./api/commonApi.js')['default']>
     readonly computed: UnwrapRef<typeof import('vue')['computed']>
     readonly createApp: UnwrapRef<typeof import('vue')['createApp']>
@@ -210,6 +215,7 @@ declare module 'vue' {
     readonly shallowReactive: UnwrapRef<typeof import('vue')['shallowReactive']>
     readonly shallowReadonly: UnwrapRef<typeof import('vue')['shallowReadonly']>
     readonly shallowRef: UnwrapRef<typeof import('vue')['shallowRef']>
+    readonly simulationEnvironment: UnwrapRef<typeof import('./utils/radarSimulation.js')['simulationEnvironment']>
     readonly storeToRefs: UnwrapRef<typeof import('pinia')['storeToRefs']>
     readonly toRaw: UnwrapRef<typeof import('vue')['toRaw']>
     readonly toRef: UnwrapRef<typeof import('vue')['toRef']>

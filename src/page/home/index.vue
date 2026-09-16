@@ -29,16 +29,45 @@
           </button>
         </div>
         <div class="control_status" :class="{ error: radarError }">
-          {{ radarError || (radarConnected ? '已连接，数据实时展示中' : '未连接') }}
+          {{ radarError || (liveRadarConnected ? '已连接，数据实时展示中' : '未连接') }}
         </div>
       </div>
     </div>
 
+    <div v-if="simulationEnabled" class="simulation_badge">
+      模拟中 · {{ radarActionLabel }} · {{ radarPersonCount }}人
+      <button @click="showTestPanel = true">调整场景</button>
+      <button @click="toggleSimulation">退出模拟</button>
+    </div>
     <!-- 指令测试面板 -->
     <div v-if="showTestPanel" class="radar_control_mask">
       <div class="radar_control_panel test_panel">
         <button class="control_close_btn" @click="showTestPanel = false">×</button>
-        <div class="control_title">指令测试</div>
+        <div class="control_title">功能与点云测试</div>
+        <div class="simulation_controls">
+          <button @click="toggleSimulation">{{ simulationEnabled ? '退出模拟，恢复实时数据' : '开启点云模拟' }}</button>
+          <p>{{ simulationEnabled ? '模拟预览中，不发送设备指令或语音播报。关闭面板可查看完整画面。' : '开启模拟后可离线预览全部人员占位场景。' }}</p>
+          <template v-if="simulationEnabled">
+            <label>占位预设
+              <select v-model="simulationPreset" @change="applySimulationPreset(OCCUPANCY_PRESETS[Number($event.target.value)])">
+                <option disabled value="">请选择（支持全部 0～3 人组合）</option>
+                <option v-for="(preset, index) in OCCUPANCY_PRESETS" :key="preset.label" :value="index">{{ preset.label }}</option>
+              </select>
+            </label>
+            <div v-for="(person, index) in simulationPeople" :key="index" class="simulation_person">
+              <strong>人员 {{ index + 1 }}</strong>
+              <label>相对雷达正前方 {{ person.angle }}°（负值向左 / 正值向右）
+                <input v-model.number="person.angle" type="range" min="-60" max="60" step="1" />
+              </label>
+              <label>距离（米）<input v-model.number="person.distance" type="number" min="0.5" max="5" step="0.01" /></label>
+              <div class="simulation_distances"><button v-for="distance in [2.49, 2.5, 2.51]" :key="distance" @click="person.distance = distance">{{ distance }}m</button></div>
+              <label>姿态<select v-model.number="person.action"><option :value="2">站立</option><option :value="3">挥手 / 运动</option><option :value="4">坐姿</option><option :value="0">未识别</option></select></label>
+            </div>
+            <label><input v-model="simulationMotion" type="checkbox" />自动左右移动、靠近及远离</label>
+            <p>风速由最近人员决定；当前：{{ radarWindPlan ? windSpeedArr[radarWindPlan.speed] : '无有效联动目标' }}</p>
+            <button @click="showTestPanel = false">查看模拟画面</button>
+          </template>
+        </div>
         <div class="test_status" :class="{ connected: mqttConnected }">
           MQTT: {{ mqttConnected ? '已连接' : '未连接' }}
         </div>
@@ -46,7 +75,7 @@
           <div v-for="item in testScenarios" :key="item.key" class="test_row">
             <span class="test_label">{{ item.label }}</span>
             <span class="test_hint">{{ item.hint }}</span>
-            <button class="test_send_btn" @click="handleTestSend(item.key)">发{{ item.label }}</button>
+            <button class="test_send_btn" @click="handleTestSend(item.key)">{{ simulationEnabled ? '预览' : '发送' }}{{ item.label }}</button>
           </div>
         </div>
       </div>
@@ -163,15 +192,16 @@ import { WIND_MODE_LABELS, WIND_MODE_FIELDS, WIND_BROADCAST_IDS, reportedWindMod
 import { debugLog, highFrequencyLog, isTvPerformanceMode } from '@/utils/debugLog'
 import { Capacitor, CapacitorHttp } from '@capacitor/core'
 import { showToast } from 'vant'
+import { buildSimulationFrame, simulationEnvironment, OCCUPANCY_PRESETS } from '@/utils/radarSimulation'
 
-const radarTrackIds = ref([])
-const latestKpts = ref([])
-const latestTrackPositions = ref([])
-const latestDistancesToRadar = ref([])
-const latestActions = ref([])
-const latestPointCloud = ref([])
-const radarParams = ref({})
-const roomConfig = ref({ width: 5, depth: 5 })
+const liveRadarTrackIds = ref([])
+const liveLatestKpts = ref([])
+const liveLatestTrackPositions = ref([])
+const liveLatestDistancesToRadar = ref([])
+const liveLatestActions = ref([])
+const liveLatestPointCloud = ref([])
+const liveRadarParams = ref({})
+const liveRoomConfig = ref({ width: 5, depth: 5 })
 const emptyRadarData = Object.freeze([])
 const pointCloudParseStep = isTvPerformanceMode ? 2 : 1
 const showLoginPanel = ref(false)
@@ -186,7 +216,7 @@ const radarLoginForm = reactive({
 const deviceLanHost = ref(
   (localStorage.getItem('deviceLanHost') || import.meta.env.VITE_LOCAL_DEVICE_HOST || '').trim()
 )
-const radarConnected = ref(false)
+const liveRadarConnected = ref(false)
 const radarConnecting = ref(false)
 const radarError = ref('')
 const loginLoading = ref(false)
@@ -201,15 +231,15 @@ const RECONNECT_BASE_DELAY = 1000
 const POINT_CLOUD_STALE_MS = isTvPerformanceMode ? 3000 : 1200
 
 const resetRadarState = () => {
-  radarTrackIds.value = []
-  latestKpts.value = []
-  latestTrackPositions.value = []
-  latestDistancesToRadar.value = []
-  latestActions.value = []
-  latestPointCloud.value = []
+  liveRadarTrackIds.value = []
+  liveLatestKpts.value = []
+  liveLatestTrackPositions.value = []
+  liveLatestDistancesToRadar.value = []
+  liveLatestActions.value = []
+  liveLatestPointCloud.value = []
   lastPointCloudFrameAt = 0
-  radarParams.value = {}
-  roomConfig.value = { width: 5, depth: 5 }
+  liveRadarParams.value = {}
+  liveRoomConfig.value = { width: 5, depth: 5 }
 }
 
 const getRadarPointCloudHex = (data) => {
@@ -254,7 +284,7 @@ const connectRadarWs = (deviceId, token = '') => {
     radarWs.onopen = () => {
       debugLog(`[雷达] 已连接 (deviceId=${deviceId}, token=${token ? '有' : '无'})`)
       radarReconnectAttempt = 0
-      radarConnected.value = true
+      liveRadarConnected.value = true
       radarConnecting.value = false
       const initData = {
         deviceID: deviceId,
@@ -286,40 +316,40 @@ const connectRadarWs = (deviceId, token = '') => {
           // console.log('[雷达] 消息:', JSON.stringify(data).substring(0, 300))
         }
         if (Array.isArray(data.track_id)) {
-          const previousTrackIds = radarTrackIds.value
+          const previousTrackIds = liveRadarTrackIds.value
           const nextTrackIds = data.track_id
-          radarTrackIds.value = nextTrackIds
-          latestKpts.value = alignRadarFrameArray(data.kpts, latestKpts.value, previousTrackIds, nextTrackIds)
-          latestTrackPositions.value = alignRadarFrameArray(
+          liveRadarTrackIds.value = nextTrackIds
+          liveLatestKpts.value = alignRadarFrameArray(data.kpts, liveLatestKpts.value, previousTrackIds, nextTrackIds)
+          liveLatestTrackPositions.value = alignRadarFrameArray(
             data.track_pos,
-            latestTrackPositions.value,
+            liveLatestTrackPositions.value,
             previousTrackIds,
             nextTrackIds,
           )
-          latestDistancesToRadar.value = Array.isArray(data.Dis2Radar)
-            ? alignRadarFrameArray(data.Dis2Radar, latestDistancesToRadar.value, previousTrackIds, nextTrackIds)
+          liveLatestDistancesToRadar.value = Array.isArray(data.Dis2Radar)
+            ? alignRadarFrameArray(data.Dis2Radar, liveLatestDistancesToRadar.value, previousTrackIds, nextTrackIds)
             : []
-          latestActions.value = alignRadarFrameArray(data.action, latestActions.value, previousTrackIds, nextTrackIds)
+          liveLatestActions.value = alignRadarFrameArray(data.action, liveLatestActions.value, previousTrackIds, nextTrackIds)
         } else {
-          if (Array.isArray(data.kpts)) latestKpts.value = data.kpts
-          if (Array.isArray(data.track_pos)) latestTrackPositions.value = data.track_pos
-          if (Array.isArray(data.Dis2Radar)) latestDistancesToRadar.value = data.Dis2Radar
-          if (Array.isArray(data.action)) latestActions.value = data.action
+          if (Array.isArray(data.kpts)) liveLatestKpts.value = data.kpts
+          if (Array.isArray(data.track_pos)) liveLatestTrackPositions.value = data.track_pos
+          if (Array.isArray(data.Dis2Radar)) liveLatestDistancesToRadar.value = data.Dis2Radar
+          if (Array.isArray(data.action)) liveLatestActions.value = data.action
         }
         const pointCloudHex = getRadarPointCloudHex(data)
         if (pointCloudHex) {
           const parsedPointCloud = parseCompressedPcloud(pointCloudHex, 5, pointCloudParseStep)
           if (parsedPointCloud.length > 0) {
-            latestPointCloud.value = parsedPointCloud
+            liveLatestPointCloud.value = parsedPointCloud
             lastPointCloudFrameAt = Date.now()
           }
         } else if (lastPointCloudFrameAt > 0 && Date.now() - lastPointCloudFrameAt > POINT_CLOUD_STALE_MS) {
-          latestPointCloud.value = []
+          liveLatestPointCloud.value = []
           lastPointCloudFrameAt = 0
         }
         if (data.RadarParams) {
           const r = data.RadarParams
-          radarParams.value = {
+          liveRadarParams.value = {
             radarHeight: r.radarHeight ?? null,
             radarX_room: r.radarX_room ?? r.radarXroom ?? null,
             radarY_room: r.radarY_room ?? r.radarYroom ?? null,
@@ -330,7 +360,7 @@ const connectRadarWs = (deviceId, token = '') => {
           const dx = r.deltaX_room != null ? Number.parseFloat(r.deltaX_room) : null
           const dy = r.deltaY_room != null ? Number.parseFloat(r.deltaY_room) : null
           if (dx != null && dy != null) {
-            roomConfig.value = { width: dx, depth: dy }
+            liveRoomConfig.value = { width: dx, depth: dy }
           }
         }
       } catch (error) {
@@ -344,7 +374,7 @@ const connectRadarWs = (deviceId, token = '') => {
         radarInitTimeoutId = null
       }
       radarWs = null
-      radarConnected.value = false
+      liveRadarConnected.value = false
       radarConnecting.value = false
       resetRadarState()
       // 非主动断开则自动重连
@@ -359,7 +389,7 @@ const connectRadarWs = (deviceId, token = '') => {
   } catch (error) {
     console.error('radar ws connect error:', error)
     radarError.value = '雷达连接异常'
-    radarConnected.value = false
+    liveRadarConnected.value = false
     radarConnecting.value = false
     // 构造阶段失败也触发重连
     if (!radarManualDisconnect) {
@@ -384,7 +414,7 @@ const disconnectRadarWs = () => {
     radarWs.close()
     radarWs = null
   }
-  radarConnected.value = false
+  liveRadarConnected.value = false
   radarConnecting.value = false
   resetRadarState()
 }
@@ -524,7 +554,7 @@ const getImageUrl = (fullName) => {
 }
 const windSpeedArr = ['自动风', '微风', '低风', '中风', '高风', '强劲风']
 
-let devData = ref({
+let liveDevData = ref({
   json_seq: 2, //数据包编号，0~65535
   id_num: 2, //检测到的人数，0-3人
   data_array: [
@@ -548,6 +578,50 @@ let devData = ref({
   power: 1,
   set_temper: 263,
 })
+
+const simulationEnabled = ref(false)
+const simulationMode = ref(1)
+const simulationPreset = ref('')
+const simulationPeople = ref([{ angle: 0, distance: 3, action: 2 }])
+const simulationMotion = ref(false)
+const simulationTick = ref(0)
+const simulationFrameCounter = ref(0)
+const simulationScene = computed(() => simulationEnvironment(liveRadarParams.value, liveRoomConfig.value))
+const simulationFrame = computed(() => {
+  simulationFrameCounter.value // 持续输出帧，让点云队列正常淘汰旧场景。
+  return buildSimulationFrame(simulationPeople.value, simulationTick.value, simulationScene.value)
+})
+function applySimulationPreset(preset) {
+  simulationMotion.value = false
+  simulationTick.value = 0
+  simulationPeople.value = preset.zones.map((zone, index) => ({
+    angle: { L: -40, M: 0, R: 40 }[zone], distance: 2 + index * 0.65, action: 2,
+  }))
+  simulationEnabled.value = true
+}
+function toggleSimulation() {
+  simulationEnabled.value = !simulationEnabled.value
+  simulationMotion.value = false
+  simulationTick.value = 0
+}
+const simulationTimer = setInterval(() => {
+  if (!simulationEnabled.value) return
+  simulationFrameCounter.value++
+  if (simulationMotion.value) simulationTick.value += 0.15
+}, 150)
+onUnmounted(() => clearInterval(simulationTimer))
+const radarTrackIds = computed(() => simulationEnabled.value ? simulationFrame.value.trackIds : liveRadarTrackIds.value)
+const latestKpts = computed(() => simulationEnabled.value ? simulationFrame.value.kpts : liveLatestKpts.value)
+const latestTrackPositions = computed(() => simulationEnabled.value ? simulationFrame.value.positions : liveLatestTrackPositions.value)
+const latestDistancesToRadar = computed(() => simulationEnabled.value ? simulationFrame.value.distances : liveLatestDistancesToRadar.value)
+const latestActions = computed(() => simulationEnabled.value ? simulationFrame.value.actions : liveLatestActions.value)
+const latestPointCloud = computed(() => simulationEnabled.value ? simulationFrame.value.pointCloud : liveLatestPointCloud.value)
+const radarParams = computed(() => simulationEnabled.value ? simulationFrame.value.radarParams : liveRadarParams.value)
+const roomConfig = computed(() => simulationEnabled.value ? simulationFrame.value.roomConfig : liveRoomConfig.value)
+const radarConnected = computed(() => simulationEnabled.value || liveRadarConnected.value)
+const devData = computed(() => simulationEnabled.value
+  ? { ...liveDevData.value, power: 1, swing_mode: simulationMode.value, speed: 4, data_array: [] }
+  : liveDevData.value)
 
 const radarPersonCount = computed(() => {
   if (radarTrackIds.value?.length > 0) {
@@ -899,14 +973,14 @@ const getData = () => {
       debugLog(data, '接口返回数据')
       dealData(data.data)
       return
-      devData.value.right_swing_area = data.right_swing_area
-      devData.value.left_swing_area = data.left_swing_area
-      // devData.value.data_array = data.data_array;
-      devData.value.speed = data.speed
-      devData.value.swing_mode = data.swing_mode
-      devData.value.power = data.power
-      devData.value.set_temper = data.set_temper
-      devData.value.id_num = data.id_num
+      liveDevData.value.right_swing_area = data.right_swing_area
+      liveDevData.value.left_swing_area = data.left_swing_area
+      // liveDevData.value.data_array = data.data_array;
+      liveDevData.value.speed = data.speed
+      liveDevData.value.swing_mode = data.swing_mode
+      liveDevData.value.power = data.power
+      liveDevData.value.set_temper = data.set_temper
+      liveDevData.value.id_num = data.id_num
       getPeopleData(data.data_array) //处理人形站位
       showfengYe()
     })
@@ -923,15 +997,15 @@ if (!window.JsFunction) {
 const applyDeviceReport = (reported) => {
   if (!reported) return
   highFrequencyLog('设备状态上报----->', reported)
-  devData.value.right_swing_area =
-    reported?.actAnglePositionForHordirH2 !== undefined ? reported?.actAnglePositionForHordirH2 : devData.value.right_swing_area
-  devData.value.left_swing_area =
-    reported?.actAnglePositionForHordir !== undefined ? reported?.actAnglePositionForHordir : devData.value.left_swing_area
-  devData.value.speed = reported?.mark !== undefined ? reported?.mark : devData.value.speed
-  devData.value.swing_mode = reportedWindMode(devData.value.swing_mode, reported)
-  devData.value.power = reported?.power !== undefined ? reported.power : devData.value.power
-  devData.value.set_temper = reported?.settemp !== undefined ? reported?.settemp : devData.value.set_temper
-  devData.value.id_num = reported?.radarTargetCount !== undefined ? reported?.radarTargetCount : devData.value.id_num
+  liveDevData.value.right_swing_area =
+    reported?.actAnglePositionForHordirH2 !== undefined ? reported?.actAnglePositionForHordirH2 : liveDevData.value.right_swing_area
+  liveDevData.value.left_swing_area =
+    reported?.actAnglePositionForHordir !== undefined ? reported?.actAnglePositionForHordir : liveDevData.value.left_swing_area
+  liveDevData.value.speed = reported?.mark !== undefined ? reported?.mark : liveDevData.value.speed
+  liveDevData.value.swing_mode = reportedWindMode(liveDevData.value.swing_mode, reported)
+  liveDevData.value.power = reported?.power !== undefined ? reported.power : liveDevData.value.power
+  liveDevData.value.set_temper = reported?.settemp !== undefined ? reported?.settemp : liveDevData.value.set_temper
+  liveDevData.value.id_num = reported?.radarTargetCount !== undefined ? reported?.radarTargetCount : liveDevData.value.id_num
   if (reported?.radarTargetCount == 1) {
     getPeopleData([
       {
@@ -955,7 +1029,7 @@ const applyDeviceReport = (reported) => {
     ])
   }
   if (reported?.radarTargetCount == 0) {
-    devData.value.data_array = []
+    liveDevData.value.data_array = []
   }
   showfengYe()
 }
@@ -976,10 +1050,11 @@ watch(
 const mqttConnected = computed(() => deviceStore.mqttConnected)
 
 const testScenarios = Object.entries(WIND_MODE_LABELS).map(([key, label]) => ({
-  key: Number(key), label, hint: '切换功能，风速随雷达姿态联动',
+  key: Number(key), label, hint: '风速随最近人员姿态联动',
 }))
 
 function handleTestSend(mode) {
+  if (simulationEnabled.value) { simulationMode.value = mode; return }
   const cmd = Object.fromEntries(Object.entries(WIND_MODE_FIELDS).map(([key, field]) => [field, Number(key) === mode ? 1 : 0]))
   deviceStore.sendCommand(cmd)
 }
@@ -994,13 +1069,14 @@ watch(
     () => devData.value.swing_mode,
     () => devData.value.power,
     mqttConnected,
+    simulationEnabled,
   ],
   () => {
     clearTimeout(windSpeedCommandTimer)
     const speed = radarWindPlan.value?.speed
-    if (speed == null || !devData.value.power) return
+    if (simulationEnabled.value || speed == null || !devData.value.power) return
     windSpeedCommandTimer = setTimeout(() => {
-      if (radarWindPlan.value?.speed === speed && Number(devData.value.speed) !== speed) {
+      if (!simulationEnabled.value && radarWindPlan.value?.speed === speed && Number(devData.value.speed) !== speed) {
         deviceStore.sendCommand({ mark: speed })
       }
     }, 500)
@@ -1012,15 +1088,16 @@ onUnmounted(() => clearTimeout(windSpeedCommandTimer))
 let windBroadcastTimer = null
 let lastWindBroadcastId = null
 watch(
-  [() => WIND_BROADCAST_IDS[devData.value.swing_mode]?.[radarWindPlan.value?.speed], mqttConnected],
+  [() => WIND_BROADCAST_IDS[devData.value.swing_mode]?.[radarWindPlan.value?.speed], mqttConnected, simulationEnabled],
   ([broadcastId, connected]) => {
     clearTimeout(windBroadcastTimer)
-    if (!connected || broadcastId == null) {
+    if (simulationEnabled.value || !connected || broadcastId == null) {
       lastWindBroadcastId = null
       return
     }
     if (broadcastId === lastWindBroadcastId) return
     windBroadcastTimer = setTimeout(() => {
+      if (simulationEnabled.value) return
       deviceStore.sendBroadcast({ broadcastid: broadcastId })
       lastWindBroadcastId = broadcastId
     }, 500)
@@ -1041,9 +1118,9 @@ const dealData = (data) => {
 const getPeopleData = (arr) => {
   //角度变化1-5°，认为人不动，界面小人保持静止；距离变化0-20cm，认为人不动，界面小人保持静止
   const devArr = [...arr]
-  if (devArr.length > 0 && devData.value.data_array.length > 0) {
+  if (devArr.length > 0 && liveDevData.value.data_array.length > 0) {
     for (const item of devArr) {
-      for (const devItem of devData.value.data_array) {
+      for (const devItem of liveDevData.value.data_array) {
         if (devItem.id == item.id && Math.abs(item.angel - devItem.angel) <= 5 && Math.abs(item.distance - devItem.distance) <= 20) {
           item.angel = devItem.angel
           item.distance = devItem.distance
@@ -1051,7 +1128,7 @@ const getPeopleData = (arr) => {
       }
     }
   }
-  devData.value.data_array = devArr
+  liveDevData.value.data_array = devArr
 }
 </script>
 
@@ -1381,9 +1458,9 @@ const getPeopleData = (arr) => {
     }
     .grid_area {
       position: absolute;
-      //按照宽度1710和角度30度算下来，高应该是493，但是图片高度不够，所以强行加高
-      height: 2500px;
-      width: 2500px;
+      // 等比例扩大场景，保持扇形圆心对齐设备底部及原有投影比例。
+      height: 3200px;
+      width: 3200px;
       margin-left: -20px;
       // mounted 后会根据设备图实际底边重算，保留设计稿坐标作为首屏兜底值。
       top: 620px;
@@ -1646,6 +1723,15 @@ const getPeopleData = (arr) => {
 }
 
 /* 测试面板 */
+.simulation_badge { position: fixed; top: 18px; left: 18px; z-index: 999; background: #12343f; color: #ffd940; padding: 16px; font-size: 26px; border-radius: 10px; }
+.simulation_badge button, .simulation_controls button, .simulation_controls select, .simulation_controls input { font-size: 24px; padding: 8px; }
+.simulation_controls { color: #d9fdff; font-size: 25px; margin-bottom: 24px; }
+.simulation_controls label { display: block; margin: 12px 0; }
+.simulation_controls input[type=range] { width: 100%; }
+.simulation_controls input[type=number] { width: 130px; }
+.simulation_person { padding: 16px; margin: 12px 0; border: 1px solid #48717c; border-radius: 8px; }
+.simulation_distances { display: flex; gap: 12px; }
+
 .radar_test_btn {
   position: fixed;
   left: 2.2%;
@@ -1662,6 +1748,7 @@ const getPeopleData = (arr) => {
 }
 
 .test_panel {
+  width: 1120px;
   max-height: 90vh;
   overflow-y: auto;
 }
@@ -1693,7 +1780,7 @@ const getPeopleData = (arr) => {
 }
 
 .test_label {
-  width: 80px;
+  width: 150px;
   font-size: 32px;
   color: #c2f9ff;
   font-weight: 600;
@@ -1707,7 +1794,7 @@ const getPeopleData = (arr) => {
 }
 
 .test_send_btn {
-  width: 120px;
+  width: 230px;
   height: 60px;
   border-radius: 8px;
   border: 1px solid rgba(1, 255, 255, 0.5);
