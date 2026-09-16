@@ -11,6 +11,7 @@ declare global {
   const SCENARIO_BROADCAST_ID: typeof import('./utils/showroomScenario.js')['SCENARIO_BROADCAST_ID']
   const SCENARIO_VOICE: typeof import('./utils/showroomScenario.js')['SCENARIO_VOICE']
   const Tools: typeof import('./utils/tools.js')['Tools']
+  const WIND_BROADCAST_IDS: typeof import('./utils/radarWindScenario.js')['WIND_BROADCAST_IDS']
   const WIND_MODE_FIELDS: typeof import('./utils/radarWindScenario.js')['WIND_MODE_FIELDS']
   const WIND_MODE_LABELS: typeof import('./utils/radarWindScenario.js')['WIND_MODE_LABELS']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
@@ -130,6 +131,7 @@ declare module 'vue' {
     readonly SCENARIO_BROADCAST_ID: UnwrapRef<typeof import('./utils/showroomScenario.js')['SCENARIO_BROADCAST_ID']>
     readonly SCENARIO_VOICE: UnwrapRef<typeof import('./utils/showroomScenario.js')['SCENARIO_VOICE']>
     readonly Tools: UnwrapRef<typeof import('./utils/tools.js')['Tools']>
+    readonly WIND_BROADCAST_IDS: UnwrapRef<typeof import('./utils/radarWindScenario.js')['WIND_BROADCAST_IDS']>
     readonly WIND_MODE_FIELDS: UnwrapRef<typeof import('./utils/radarWindScenario.js')['WIND_MODE_FIELDS']>
     readonly WIND_MODE_LABELS: UnwrapRef<typeof import('./utils/radarWindScenario.js')['WIND_MODE_LABELS']>
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>

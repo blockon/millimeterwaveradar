@@ -2,6 +2,13 @@
 export const WIND_MODE_LABELS = Object.freeze({ 1: '风随人动', 2: '风避人吹', 3: '人近风柔' })
 export const WIND_MODE_FIELDS = Object.freeze({ 1: 'radarWindFollowPeople', 2: 'radarWindAvoidPeople', 3: 'radarPeopleNearSoftWind' })
 
+/** CHS 雷达专用播报：按功能模式和目标风速匹配。 */
+export const WIND_BROADCAST_IDS = Object.freeze({
+  1: Object.freeze({ 2: 65010, 4: 65011 }), // 风随人动：低风、高风
+  2: Object.freeze({ 2: 65008, 4: 65009 }), // 风避人吹：低风、高风
+  3: Object.freeze({ 2: 65012, 4: 65013 }), // 人近风柔：低风、高风
+})
+
 export function reportedWindMode(current, report) {
   const enabled = Object.keys(WIND_MODE_FIELDS).find(mode => report[WIND_MODE_FIELDS[mode]] == 1)
   if (enabled) return Number(enabled)
