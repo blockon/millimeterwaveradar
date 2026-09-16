@@ -159,7 +159,7 @@ import sessionManager from '@/utils/login/sessionManager'
 import { binaryToString } from '@/utils/binaryToString'
 import { parseCompressedPcloud } from '@/utils/parse_compressed_pcloud'
 import { buildNearestRadarPersonRows, getFloorOriginXZFromRadarParams } from '@/utils/radarPersonMetrics'
-import { WIND_MODE_LABELS, WIND_MODE_FIELDS, reportedWindMode, resolveRadarWind } from '@/utils/radarWindScenario'
+import { WIND_MODE_LABELS, WIND_MODE_FIELDS, WIND_BROADCAST_IDS, reportedWindMode, resolveRadarWind } from '@/utils/radarWindScenario'
 import { debugLog, highFrequencyLog, isTvPerformanceMode } from '@/utils/debugLog'
 import { Capacitor, CapacitorHttp } from '@capacitor/core'
 import { showToast } from 'vant'
@@ -1007,6 +1007,26 @@ watch(
   },
 )
 onUnmounted(() => clearTimeout(windSpeedCommandTimer))
+
+// 模式/目标风速稳定后独立播报，设备已处于目标风速时也能播报模式切换。
+let windBroadcastTimer = null
+let lastWindBroadcastId = null
+watch(
+  [() => WIND_BROADCAST_IDS[devData.value.swing_mode]?.[radarWindPlan.value?.speed], mqttConnected],
+  ([broadcastId, connected]) => {
+    clearTimeout(windBroadcastTimer)
+    if (!connected || broadcastId == null) {
+      lastWindBroadcastId = null
+      return
+    }
+    if (broadcastId === lastWindBroadcastId) return
+    windBroadcastTimer = setTimeout(() => {
+      deviceStore.sendBroadcast({ broadcastid: broadcastId })
+      lastWindBroadcastId = broadcastId
+    }, 500)
+  },
+)
+onUnmounted(() => clearTimeout(windBroadcastTimer))
 
 const dealData = (data) => {
   let newStatusStr = js.fromDevice(data)
