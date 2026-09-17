@@ -168,7 +168,8 @@ export const deviceStore = defineStore('deviceStore', {
         commandId: 256,
         timestamp: new Date().getTime(),
         source: 3,
-        payload: command,
+        // 所有控制指令统一关闭蜂鸣器，覆盖调用方传入的开关值。
+        payload: { ...command, buzzer: 0 },
       }
 
       if (this.mqttConnection && this.mqttConnected) {
