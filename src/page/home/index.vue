@@ -46,7 +46,7 @@
         <div class="control_title">功能与点云测试</div>
         <div class="simulation_controls">
           <button @click="toggleSimulation">{{ simulationEnabled ? '退出模拟，恢复实时数据' : '开启点云模拟' }}</button>
-          <p>{{ simulationEnabled ? '模拟预览中，不发送设备指令或语音播报。关闭面板可查看完整画面。' : '开启模拟后可离线预览全部人员占位场景。' }}</p>
+          <p>{{ simulationEnabled ? '模拟中：摆叶和整机风速指令输出到控制台，无需连接设备。关闭面板可查看完整画面。' : '开启模拟后可离线预览全部人员占位场景。' }}</p>
           <template v-if="simulationEnabled">
             <label>占位预设
               <select v-model="simulationPreset" @change="applySimulationPreset(OCCUPANCY_PRESETS[Number($event.target.value)])">
@@ -573,8 +573,8 @@ let liveDevData = ref({
   // 扫风时绘制动画 风随人动和风逆人动动画停止，只绘制角度
   swing_mode: 0, //扫风方式，1：风随人动，2：风避人吹，3:人近风柔
   sleep_mode: 1, //睡眠模式，0：关闭，1：打开
-  left_swing_area: 0, //上(左)摆叶摆风区域，0--100度   0度是中间 50度斜前方 左边是100，只有这三种情况
-  right_swing_area: 0, //下（右）摆叶摆风区域，0--100度   0度是中间，50度斜前方 右边是100
+  left_swing_area: 0, //左大摆叶：最左100，中间50，最右0
+  right_swing_area: 0, //右大摆叶：最左0，中间50，最右100
   power: 1,
   set_temper: 263,
 })
@@ -1083,6 +1083,30 @@ watch(
   },
 )
 onUnmounted(() => clearTimeout(windSpeedCommandTimer))
+
+// 风向与界面同步下发。只监听目标刻度，避免连续雷达帧及摆叶运动回报重复发令。
+watch(
+  [
+    () => radarWindPlan.value?.left.position,
+    () => radarWindPlan.value?.right.position,
+    () => devData.value.swing_mode,
+    mqttConnected,
+    simulationEnabled,
+    () => simulationEnabled.value ? radarWindPlan.value?.speed : null,
+  ],
+  ([left, right, mode, connected, simulated, speed]) => {
+    if (left == null || right == null) return
+    const command = {
+      setPositionForLeftRightWind: left,
+      setPositionForLeftRightWindH2: right,
+    }
+    if (simulated) {
+      console.log('[点云模拟][控制指令]', '模式:', mode, JSON.stringify({ ...command, mark: speed }))
+      return
+    }
+    if (connected) deviceStore.sendCommand(command)
+  },
+)
 
 // 模式/目标风速稳定后独立播报，设备已处于目标风速时也能播报模式切换。
 let windBroadcastTimer = null

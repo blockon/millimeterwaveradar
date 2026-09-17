@@ -1,6 +1,6 @@
 import { RADAR_VIEW_AZIMUTH_DEG } from '../rendering/radarView.js'
 
-/** 60GHz 新需求：姿态决定风速，功能模式始终由设备状态决定。 */
+/** 60GHz 新需求：具体场景优先决定风速，功能模式始终由设备状态决定。 */
 export const WIND_MODE_LABELS = Object.freeze({ 1: '风随人动', 2: '风避人吹', 3: '人近风柔' })
 export const WIND_MODE_FIELDS = Object.freeze({ 1: 'radarWindFollowPeople', 2: 'radarWindAvoidPeople', 3: 'radarPeopleNearSoftWind' })
 
@@ -26,6 +26,8 @@ export function radarWindZone(angle) {
 }
 
 const beam = (side, direction, strength, short = false) => ({
+  // 两组大摆叶刻度相反；图片与设备定位共用同一个方向。
+  position: direction === 'M' ? 50 : side === direction ? 100 : 0,
   image: `${side}_${direction}${short && side === direction && strength === 'Weak' ? 'Small' : ''}${strength}.png`,
   // 外侧短弱风有原图，其余短风以出风口为中心缩短。
   scale: short && !(side === direction && strength === 'Weak') ? 0.6 : 1,
@@ -50,8 +52,9 @@ export function resolveRadarWind({ mode, targets, action, distanceM }) {
     if (left && right) return middle ? pair('M', 'M') : pair('L', 'R')
     return left ? pair('L', 'L') : right ? pair('R', 'R') : pair('M', 'M')
   }
-  if (left && right) return middle ? pair('M', 'M') : pair('M', 'M', 'Weak', 'Weak', true, true)
-  if (!left && !right) return pair('L', 'R', 'Weak', 'Weak', true, true)
+  // 具体场景的短弱风优先于站立/挥拳的通用高风规则，整机也使用低风。
+  if (left && right) return middle ? pair('M', 'M') : { ...pair('M', 'M', 'Weak', 'Weak', true, true), speed: 2 }
+  if (!left && !right) return { ...pair('L', 'R', 'Weak', 'Weak', true, true), speed: 2 }
   if (left) return pair('R', 'R', strength, sitting && !middle ? 'Strong' : strength, middle, false)
   return pair('L', 'L', sitting && !middle ? 'Strong' : strength, strength, false, middle)
 }

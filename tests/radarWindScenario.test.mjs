@@ -40,13 +40,16 @@ for (const mode of [1, 2]) {
     for (const action of [2, 3, 4]) {
       test(`模式${mode} 站位${positions} 动作${action}`, () => {
         const result = resolve(mode, positions, action)
-        assert.equal(result.speed, action === 4 ? 2 : 4)
         const weakOnly = mode === 2 && ['M', 'LR'].includes(positions)
+        assert.equal(result.speed, weakOnly || action === 4 ? 2 : 4)
         const strengths = [0, 1].map(side => weakOnly || action === 4 ? 'Weak' : 'Strong')
         if (mode === 2 && action === 4 && positions === 'L') strengths[1] = 'Strong'
         if (mode === 2 && action === 4 && positions === 'R') strengths[0] = 'Strong'
         for (const [i, side] of ['left', 'right'].entries()) {
           assert.equal(result[side].image, `${expected[mode][positions][i]}${strengths[i]}.png`)
+          const direction = expected[mode][positions][i][2]
+          const positionsBySide = { left: { L: 100, M: 50, R: 0 }, right: { L: 0, M: 50, R: 100 } }
+          assert.equal(result[side].position, positionsBySide[side][direction])
           assert.ok(existsSync(new URL(`../src/assets/imgs/${result[side].image}`, import.meta.url)))
           const short = mode === 2 && (positions === 'LR' || positions === 'LM' && side === 'left' || positions === 'RM' && side === 'right')
           assert.equal(result[side].scale, short ? 0.6 : 1)
@@ -63,6 +66,8 @@ for (const action of [2, 3, 4]) {
       assert.equal(result.speed, low ? 2 : 4)
       assert.equal(result.left.image, low ? 'L_LSmallWeak.png' : 'L_LStrong.png')
       assert.equal(result.right.image, low ? 'R_RSmallWeak.png' : 'R_RStrong.png')
+      assert.equal(result.left.position, 100)
+      assert.equal(result.right.position, 100)
     })
   }
 }

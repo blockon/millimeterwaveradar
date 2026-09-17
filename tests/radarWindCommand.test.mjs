@@ -135,3 +135,65 @@ test('模拟模式切换不下发功能指令，取消待播报并阻止模拟�
   assert.deepEqual(commands, [])
   assert.deepEqual(broadcasts, [])
 })
+
+test('风向即时下发、同向帧去重、回报不重发，模拟离线打印指令，真实断线及无目标不下发', async t => {
+  const start = homeSource.indexOf('// 风向与界面同步下发。')
+  const end = homeSource.indexOf('// 模式/目标风速稳定后独立播报', start)
+  assert.ok(start >= 0 && end > start)
+  const install = new Function('watch', 'radarWindPlan', 'devData', 'mqttConnected', 'simulationEnabled', 'deviceStore', 'console', homeSource.slice(start, end))
+  const plan = ref(null), dev = ref({ swing_mode: 1, power: 1 })
+  const connected = ref(true), simulated = ref(false), commands = [], logs = []
+  const scope = effectScope()
+  scope.run(() => install(watch, plan, dev, connected, simulated, { sendCommand: c => commands.push(c) }, { log: (...args) => logs.push(args) }))
+  t.after(() => scope.stop())
+  const setPlan = async (left, right) => {
+    plan.value = { left: { position: left }, right: { position: right }, speed: 4 }
+    await nextTick()
+  }
+  await setPlan(100, 0)
+  assert.deepEqual(commands, [{ setPositionForLeftRightWind: 100, setPositionForLeftRightWindH2: 0 }])
+  await setPlan(100, 0)
+  dev.value.left_swing_area = 80
+  await nextTick()
+  assert.equal(commands.length, 1)
+  await setPlan(50, 50)
+  assert.deepEqual(commands.at(-1), { setPositionForLeftRightWind: 50, setPositionForLeftRightWindH2: 50 })
+  connected.value = false
+  await setPlan(0, 100)
+  assert.equal(commands.length, 2)
+  connected.value = true
+  await nextTick()
+  assert.deepEqual(commands.at(-1), { setPositionForLeftRightWind: 0, setPositionForLeftRightWindH2: 100 })
+  connected.value = false
+  simulated.value = true
+  await setPlan(100, 100)
+  assert.equal(commands.length, 3)
+  assert.equal(logs.length, 1)
+  assert.deepEqual(JSON.parse(logs[0].at(-1)), { setPositionForLeftRightWind: 100, setPositionForLeftRightWindH2: 100, mark: 4 })
+  await setPlan(100, 100)
+  assert.equal(logs.length, 1)
+  await setPlan(0, 100)
+  assert.deepEqual(JSON.parse(logs.at(-1).at(-1)), { setPositionForLeftRightWind: 0, setPositionForLeftRightWindH2: 100, mark: 4 })
+  plan.value.speed = 2
+  await nextTick()
+  assert.equal(logs.length, 3)
+  assert.deepEqual(JSON.parse(logs.at(-1).at(-1)), { setPositionForLeftRightWind: 0, setPositionForLeftRightWindH2: 100, mark: 2 })
+  connected.value = true
+  await nextTick()
+  assert.equal(commands.length, 3)
+  simulated.value = false
+  await nextTick()
+  assert.equal(commands.length, 4)
+  // 关机、退出模式、雷达断开或无人时，实际计算属性都会返回 null。
+  plan.value = null
+  await nextTick()
+  assert.equal(commands.length, 4)
+  await setPlan(100, 100)
+  assert.equal(commands.length, 5)
+  dev.value.swing_mode = 3
+  await nextTick()
+  assert.equal(commands.length, 6)
+  scope.stop()
+  await setPlan(50, 50)
+  assert.equal(commands.length, 6)
+})
