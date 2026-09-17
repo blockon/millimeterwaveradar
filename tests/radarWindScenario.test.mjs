@@ -41,7 +41,7 @@ for (const mode of [1, 2]) {
       test(`模式${mode} 站位${positions} 动作${action}`, () => {
         const result = resolve(mode, positions, action)
         const weakOnly = mode === 2 && ['M', 'LR'].includes(positions)
-        assert.equal(result.speed, weakOnly || action === 4 ? 2 : 4)
+        assert.equal(result.speed, action === 4 ? 2 : 4)
         const strengths = [0, 1].map(side => weakOnly || action === 4 ? 'Weak' : 'Strong')
         if (mode === 2 && action === 4 && positions === 'L') strengths[1] = 'Strong'
         if (mode === 2 && action === 4 && positions === 'R') strengths[0] = 'Strong'
@@ -146,7 +146,7 @@ test('风避人吹在中间区外至少避让一档，左右及中间有人时�
     const result = resolveRadarWind({ mode: 2, targets: [{ angel: SIM_FORWARD_DEG + offset }], action: 2 })
     assert.equal(result.left.position, 100)
     assert.equal(result.right.position, 100)
-    assert.equal(result.speed, 2)
+    assert.equal(result.speed, 4)
   }
 })
 

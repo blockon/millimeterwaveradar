@@ -1,15 +1,11 @@
 import { RADAR_VIEW_AZIMUTH_DEG } from '../rendering/radarView.js'
 
-/** 60GHz 新需求：具体场景优先决定风速，功能模式始终由设备状态决定。 */
+/** 整机风速由大场景决定，细分站位仅影响摆叶和风效；功能模式由设备状态决定。 */
 export const WIND_MODE_LABELS = Object.freeze({ 1: '风随人动', 2: '风避人吹', 3: '人近风柔' })
 export const WIND_MODE_FIELDS = Object.freeze({ 1: 'radarWindFollowPeople', 2: 'radarWindAvoidPeople', 3: 'radarPeopleNearSoftWind' })
 
-/** CHS 雷达专用播报：按功能模式和目标风速匹配。 */
-export const WIND_BROADCAST_IDS = Object.freeze({
-  1: Object.freeze({ 2: 65010, 4: 65011 }), // 风随人动：低风、高风
-  2: Object.freeze({ 2: 65008, 4: 65009 }), // 风避人吹：低风、高风
-  3: Object.freeze({ 2: 65012, 4: 65013 }), // 人近风柔：低风、高风
-})
+/** 风随人动、风避人吹、人近风柔的高低风组合不再下发语音播报。 */
+export const WIND_BROADCAST_IDS = Object.freeze({})
 
 /**
  * 视线前后轴两侧各 20° 视为中间区。这条边界同时是摆叶摆幅的起始角：
@@ -123,14 +119,14 @@ export function resolveRadarWind({ mode, targets, action, distanceM }) {
     if (right) return pair('R', 'R', { leftDeflection: rightDeg, rightDeflection: rightDeg })
     return pair('M', 'M')
   }
-  // 具体场景的短弱风优先于站立/挥拳的通用高风规则，整机也使用低风。
+  // 细分场景的短弱风仅用于风效展示，不覆盖大场景的整机风速。
   if (left && right) {
     return middle
       ? pair('M', 'M')
-      : { ...pair('M', 'M', { leftStrength: 'Weak', rightStrength: 'Weak', leftShort: true, rightShort: true }), speed: 2 }
+      : pair('M', 'M', { leftStrength: 'Weak', rightStrength: 'Weak', leftShort: true, rightShort: true })
   }
   if (!left && !right) {
-    return { ...pair('L', 'R', { leftStrength: 'Weak', rightStrength: 'Weak', leftShort: true, rightShort: true }), speed: 2 }
+    return pair('L', 'R', { leftStrength: 'Weak', rightStrength: 'Weak', leftShort: true, rightShort: true })
   }
   if (left) {
     return pair('R', 'R', {

@@ -195,6 +195,7 @@ import { showToast } from 'vant'
 import { buildSimulationFrame, simulationEnvironment, OCCUPANCY_PRESETS } from '@/utils/radarSimulation'
 
 const liveRadarTrackIds = ref([])
+const lastRadarFrameAt = ref(0)
 const liveLatestKpts = ref([])
 const liveLatestTrackPositions = ref([])
 const liveLatestDistancesToRadar = ref([])
@@ -314,6 +315,10 @@ const connectRadarWs = (deviceId, token = '') => {
         // 只打印非 success 响应或有业务数据时
         if (data.code !== 200 || data.track_id || data.kpts) {
           // console.log('[雷达] 消息:', JSON.stringify(data).substring(0, 300))
+        }
+        // 业务帧才刷新接收时间；连接确认和心跳不算人员数据上报。
+        if (['track_id', 'kpts', 'track_pos', 'Dis2Radar', 'action'].some(key => Array.isArray(data[key])) || getRadarPointCloudHex(data)) {
+          lastRadarFrameAt.value = Date.now()
         }
         if (Array.isArray(data.track_id)) {
           const previousTrackIds = liveRadarTrackIds.value
@@ -747,9 +752,9 @@ const windEffectActive = computed(() => {
   return !!(devData.value.power && windModeImgLeft.value && windModeImgRight.value)
 })
 const showfengYe = () => {
-  if (radarWindPlan.value) {
-    windModeImgLeft.value = getImageUrl(radarWindPlan.value.left.image)
-    windModeImgRight.value = getImageUrl(radarWindPlan.value.right.image)
+  if (displayRadarWindPlan.value) {
+    windModeImgLeft.value = getImageUrl(displayRadarWindPlan.value.left.image)
+    windModeImgRight.value = getImageUrl(displayRadarWindPlan.value.right.image)
     return
   }
   let imgNameLeft = ''
@@ -830,10 +835,46 @@ const radarWindPlan = computed(() => {
       ? Number(reportedDistance) : nearest?.distanceM,
   })
 })
-const displayWindSpeed = computed(() => radarWindPlan.value?.speed ?? devData.value.speed)
+// 只缓冲显示，控制和播报仍使用当前帧，避免无效目标延续控制。
+const displayRadarWindPlan = shallowRef(null)
+const WIND_DISPLAY_HOLD_MS = 5000
+let windDisplayHoldTimer = null
+const clearWindDisplayHold = () => {
+  clearTimeout(windDisplayHoldTimer)
+  windDisplayHoldTimer = null
+}
+watch(
+  [radarWindPlan, () => devData.value.power, () => devData.value.swing_mode, simulationEnabled, lastRadarFrameAt],
+  ([plan, power, mode, simulated, frameAt], previous) => {
+    const contextChanged = previous.length > 0 && (
+      power !== previous[1] || mode !== previous[2] || simulated !== previous[3]
+    )
+    clearWindDisplayHold()
+    if (!power || contextChanged) displayRadarWindPlan.value = null
+    if (!power) return
+    // 模拟使用本地帧，不受真实雷达上报超时影响。
+    const remaining = simulated ? Infinity : WIND_DISPLAY_HOLD_MS - (Date.now() - frameAt)
+    if (remaining <= 0) {
+      displayRadarWindPlan.value = null
+      return
+    }
+    if (plan) displayRadarWindPlan.value = plan
+    // 姿态暂时无法识别时保留原风效；只按最后一次业务帧的接收时间回退。
+    // 即便最后一帧有效，也必须能在后续完全停止上报时超时。
+    if (!simulated) {
+      windDisplayHoldTimer = setTimeout(() => {
+        displayRadarWindPlan.value = null
+        windDisplayHoldTimer = null
+      }, remaining)
+    }
+  },
+  { immediate: true },
+)
+onUnmounted(clearWindDisplayHold)
+const displayWindSpeed = computed(() => displayRadarWindPlan.value?.speed ?? devData.value.speed)
 const radarActionLabel = computed(() => WIND_MODE_LABELS[devData.value.swing_mode] || '')
 const windBeamStyle = (side) => ({
-  transform: `scale(${radarWindPlan.value?.[side]?.scale ?? 1})`,
+  transform: `scale(${displayRadarWindPlan.value?.[side]?.scale ?? 1})`,
   transformOrigin: `${side === 'left' ? 49.1 : 50.9}% 30%`,
   animationDuration: displayWindSpeed.value > 2 ? '1.2s' : '2.2s',
 })
@@ -905,7 +946,7 @@ watch(
     devData.value.left_swing_area,
     devData.value.right_swing_area,
     windPersonCount.value,
-    radarWindPlan.value,
+    displayRadarWindPlan.value,
   ],
   refreshWindEffect,
   { immediate: true },
