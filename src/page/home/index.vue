@@ -1570,13 +1570,14 @@ const getPeopleData = (arr) => {
     }
   }
 
-  /* 雷达点云小窗：视觉稿位于左侧扇形场景右下角，贴底边并压住模式标签条 */
+  /* 雷达点云小窗：视觉稿位于左侧扇形场景右下角，贴底边并压住模式标签条
+     右边界与右侧 heat_list 左边线对齐：2640 - 2740 = -100px；左边界仍是 1866 → width = 2740 - 1866 = 874px */
   .radar_point_cloud_panel {
     position: absolute;
-    right: 62px;
+    right: -50px;
     bottom: 80px;
-    width: 712px;
-    height: 624px;
+    width: 874px;
+    height: 774px;
     z-index: 200;
     overflow: hidden;
     // border-radius: 12px;
