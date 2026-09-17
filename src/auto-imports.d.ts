@@ -13,8 +13,13 @@ declare global {
   const SCENARIO_VOICE: typeof import('./utils/showroomScenario.js')['SCENARIO_VOICE']
   const Tools: typeof import('./utils/tools.js')['Tools']
   const WIND_BROADCAST_IDS: typeof import('./utils/radarWindScenario.js')['WIND_BROADCAST_IDS']
+  const WIND_FRONT_BEARING_DEG: typeof import('./utils/radarWindScenario.js')['WIND_FRONT_BEARING_DEG']
   const WIND_MODE_FIELDS: typeof import('./utils/radarWindScenario.js')['WIND_MODE_FIELDS']
   const WIND_MODE_LABELS: typeof import('./utils/radarWindScenario.js')['WIND_MODE_LABELS']
+  const WIND_POSITION_FULL_DEFLECTION_DEG: typeof import('./utils/radarWindScenario.js')['WIND_POSITION_FULL_DEFLECTION_DEG']
+  const WIND_POSITION_LEVELS: typeof import('./utils/radarWindScenario.js')['WIND_POSITION_LEVELS']
+  const WIND_POSITION_STEP: typeof import('./utils/radarWindScenario.js')['WIND_POSITION_STEP']
+  const WIND_ZONE_MIDDLE_HALF_WIDTH_DEG: typeof import('./utils/radarWindScenario.js')['WIND_ZONE_MIDDLE_HALF_WIDTH_DEG']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const binaryToString: typeof import('./utils/binaryToString.js')['binaryToString']
   const buildNearestRadarPersonRows: typeof import('./utils/radarPersonMetrics.js')['buildNearestRadarPersonRows']
@@ -79,6 +84,8 @@ declare global {
   const onUpdated: typeof import('vue')['onUpdated']
   const parseCompressedPcloud: typeof import('./utils/parse_compressed_pcloud.js')['parseCompressedPcloud']
   const provide: typeof import('vue')['provide']
+  const radarWindDeflectionDeg: typeof import('./utils/radarWindScenario.js')['radarWindDeflectionDeg']
+  const radarWindSwingAmount: typeof import('./utils/radarWindScenario.js')['radarWindSwingAmount']
   const radarWindZone: typeof import('./utils/radarWindScenario.js')['radarWindZone']
   const reactive: typeof import('vue')['reactive']
   const readonly: typeof import('vue')['readonly']
@@ -136,8 +143,13 @@ declare module 'vue' {
     readonly SCENARIO_VOICE: UnwrapRef<typeof import('./utils/showroomScenario.js')['SCENARIO_VOICE']>
     readonly Tools: UnwrapRef<typeof import('./utils/tools.js')['Tools']>
     readonly WIND_BROADCAST_IDS: UnwrapRef<typeof import('./utils/radarWindScenario.js')['WIND_BROADCAST_IDS']>
+    readonly WIND_FRONT_BEARING_DEG: UnwrapRef<typeof import('./utils/radarWindScenario.js')['WIND_FRONT_BEARING_DEG']>
     readonly WIND_MODE_FIELDS: UnwrapRef<typeof import('./utils/radarWindScenario.js')['WIND_MODE_FIELDS']>
     readonly WIND_MODE_LABELS: UnwrapRef<typeof import('./utils/radarWindScenario.js')['WIND_MODE_LABELS']>
+    readonly WIND_POSITION_FULL_DEFLECTION_DEG: UnwrapRef<typeof import('./utils/radarWindScenario.js')['WIND_POSITION_FULL_DEFLECTION_DEG']>
+    readonly WIND_POSITION_LEVELS: UnwrapRef<typeof import('./utils/radarWindScenario.js')['WIND_POSITION_LEVELS']>
+    readonly WIND_POSITION_STEP: UnwrapRef<typeof import('./utils/radarWindScenario.js')['WIND_POSITION_STEP']>
+    readonly WIND_ZONE_MIDDLE_HALF_WIDTH_DEG: UnwrapRef<typeof import('./utils/radarWindScenario.js')['WIND_ZONE_MIDDLE_HALF_WIDTH_DEG']>
     readonly acceptHMRUpdate: UnwrapRef<typeof import('pinia')['acceptHMRUpdate']>
     readonly binaryToString: UnwrapRef<typeof import('./utils/binaryToString.js')['binaryToString']>
     readonly buildNearestRadarPersonRows: UnwrapRef<typeof import('./utils/radarPersonMetrics.js')['buildNearestRadarPersonRows']>
@@ -202,6 +214,8 @@ declare module 'vue' {
     readonly onUpdated: UnwrapRef<typeof import('vue')['onUpdated']>
     readonly parseCompressedPcloud: UnwrapRef<typeof import('./utils/parse_compressed_pcloud.js')['parseCompressedPcloud']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
+    readonly radarWindDeflectionDeg: UnwrapRef<typeof import('./utils/radarWindScenario.js')['radarWindDeflectionDeg']>
+    readonly radarWindSwingAmount: UnwrapRef<typeof import('./utils/radarWindScenario.js')['radarWindSwingAmount']>
     readonly radarWindZone: UnwrapRef<typeof import('./utils/radarWindScenario.js')['radarWindZone']>
     readonly reactive: UnwrapRef<typeof import('vue')['reactive']>
     readonly readonly: UnwrapRef<typeof import('vue')['readonly']>
